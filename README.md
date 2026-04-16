@@ -76,6 +76,10 @@ uv run ruff format .       # 代码格式化
 uv run pytest              # 运行测试
 ```
 
+## Credits
+
+小红书自动化引擎（`scripts/` 和 `extension/`）基于 [xiaohongshu-skills](https://github.com/autoclaw-cc/xiaohongshu-skills) 开发，MIT License。
+
 ## License
 
 MIT
