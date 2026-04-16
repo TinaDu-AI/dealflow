@@ -1,0 +1,4396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>MFV Deal Flow</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --safe-top: env(safe-area-inset-top, 44px);
+      --safe-bottom: env(safe-area-inset-bottom, 34px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --bg: #f0f0f5;
+      --card-bg: #ffffff;
+      --header-bg: #ffffff;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --border: #e5e7eb;
+      --parchment: #F5F0E8;
+      --parchment-line: #d6cdb8;
+      --shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+      --shadow-hover: 0 8px 32px rgba(0,0,0,0.14);
+      --radius: 20px;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── App shell ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
+    }
+
+    /* ── Screens ── */
+    .screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    .screen.active { display: flex; }
+
+    /* ════════════════════════════════
+       MAIN SCREEN
+    ════════════════════════════════ */
+    #screen-main { background: var(--bg); }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px 10px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text-primary);
+    }
+    .header-title span {
+      color: #7c3aed;
+    }
+    .header-scan-date {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .header-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .header-btn:active { background: #e5e7eb; }
+
+    /* Card area */
+    .card-area {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 16px 20px;
+    }
+
+    /* Card stack */
+    .card-stack {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      height: 100%;
+    }
+
+    /* Individual card */
+    .deal-card {
+      position: absolute;
+      inset: 0;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      transform-origin: center 110%;
+      will-change: transform;
+    }
+    .deal-card:active { cursor: grabbing; }
+
+    /* Stack peek cards */
+    .deal-card.peek-1 {
+      transform: scale(0.96) translateY(8px);
+      z-index: 1;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    .deal-card.peek-2 {
+      transform: scale(0.92) translateY(16px);
+      z-index: 0;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    }
+    .deal-card.active-card {
+      z-index: 10;
+    }
+
+    /* Card header (fixed) */
+    .card-header {
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .card-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.2;
+      letter-spacing: -0.4px;
+    }
+    .card-oneliner {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* Card body (scrollable) */
+    .card-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px 20px 20px;
+      overscroll-behavior: contain;
+    }
+    .card-body::-webkit-scrollbar { display: none; }
+
+    .card-field {
+      margin-bottom: 14px;
+    }
+    .card-field-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .card-field-value {
+      font-size: 14px;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    /* Keywords pills */
+    .keywords-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 4px 0 10px;
+    }
+    .keyword-pill {
+      background: #ede9fe;
+      color: #6d28d9;
+      border-radius: 100px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* MFV note box */
+    .mfv-note-box {
+      background: #faf5ff;
+      border-left: 3px solid #7c3aed;
+      border-radius: 0 10px 10px 0;
+      padding: 12px 14px;
+      margin-top: 4px;
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.65;
+    }
+
+    /* XHS link */
+    .xhs-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 13px;
+      color: #7c3aed;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .xhs-link:active { opacity: 0.7; }
+
+    /* ── Analysis drawer ── */
+    .analysis-drawer {
+      border-top: 1px solid var(--border);
+      margin-top: 14px;
+    }
+    .drawer-toggle {
+      width: 100%;
+      padding: 10px 0 6px;
+      background: none;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .drawer-arrow { font-size: 10px; transition: transform 0.2s; }
+    .drawer-arrow.open { transform: rotate(90deg); }
+    .drawer-content { padding-bottom: 6px; }
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+    .score-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .score-dim-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .score-dots { display: flex; gap: 3px; }
+    .score-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #e5e7eb;
+    }
+    .viability-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .viability-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-right: 2px;
+    }
+    .viability-pill {
+      background: #f0fdf4;
+      color: #15803d;
+      border-radius: 100px;
+      padding: 2px 9px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    /* Swipe overlays */
+    .swipe-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 72px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+      z-index: 20;
+    }
+    .swipe-overlay.left-overlay { background: rgba(239,68,68,0.18); }
+    .swipe-overlay.right-overlay { background: rgba(34,197,94,0.18); }
+
+    /* Bottom bar */
+    .bottom-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 40px 16px;
+      background: var(--header-bg);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .action-btn {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      border: 2px solid;
+      background: white;
+      font-size: 26px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s, box-shadow 0.1s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    }
+    .action-btn:active { transform: scale(0.93); box-shadow: none; }
+    .btn-pass { border-color: var(--accent-red); }
+    .btn-like { border-color: var(--accent-green); }
+    .card-counter {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 48px;
+      text-align: center;
+    }
+
+    /* ── Fly-off animations ── */
+    .fly-left {
+      animation: flyLeft 0.4s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+    }
+    .fly-right {
+      animation: flyRight 0.4s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+    }
+    .snap-back {
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes flyLeft {
+      to { transform: translateX(-140%) rotate(-30deg); opacity: 0; }
+    }
+    @keyframes flyRight {
+      to { transform: translateX(140%) rotate(30deg); opacity: 0; }
+    }
+
+    /* ════════════════════════════════
+       PARCHMENT PANEL (left swipe)
+    ════════════════════════════════ */
+    .parchment-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+    }
+    .parchment-backdrop.open { display: block; }
+
+    .parchment-panel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--parchment);
+      border-radius: 0 0 24px 24px;
+      padding: calc(var(--safe-top) + 16px) 24px 28px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      transform-origin: top center;
+      transform: scaleY(0);
+      overflow: hidden;
+    }
+    .parchment-backdrop.open .parchment-panel {
+      animation: unfurl 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes unfurl {
+      from { transform: scaleY(0); }
+      to   { transform: scaleY(1); }
+    }
+
+    /* Ruled lines background */
+    .parchment-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        transparent,
+        transparent 27px,
+        var(--parchment-line) 27px,
+        var(--parchment-line) 28px
+      );
+      background-position: 0 calc(var(--safe-top) + 68px);
+      pointer-events: none;
+    }
+
+    .parchment-title {
+      font-size: 22px;
+      font-weight: 700;
+      font-family: "STKaiti", "KaiTi", "BiauKai", Georgia, serif;
+      color: #5c4a2a;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .parchment-textarea {
+      width: 100%;
+      min-height: 120px;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      font-family: "STKaiti", "KaiTi", "BiauKai", Georgia, serif;
+      color: #3d2e0e;
+      line-height: 28px;
+      resize: none;
+      position: relative;
+      z-index: 1;
+    }
+    .parchment-textarea::placeholder { color: #b8a882; }
+
+    .parchment-confirm {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      background: #5c4a2a;
+      color: #f5f0e8;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      position: relative;
+      z-index: 1;
+      transition: opacity 0.15s;
+    }
+    .parchment-confirm:active { opacity: 0.8; }
+
+    /* ════════════════════════════════
+       DM MODAL (right swipe)
+    ════════════════════════════════ */
+    .dm-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: flex-end;
+    }
+    .dm-backdrop.open { display: flex; }
+
+    .dm-sheet {
+      width: 100%;
+      background: white;
+      border-radius: 24px 24px 0 0;
+      padding: 0 0 calc(var(--safe-bottom) + 8px);
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+    }
+    .dm-backdrop.open .dm-sheet {
+      animation: slideUp 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    .dm-handle {
+      width: 40px;
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      margin: 12px auto 0;
+      flex-shrink: 0;
+    }
+    .dm-title {
+      font-size: 18px;
+      font-weight: 700;
+      padding: 16px 20px 8px;
+      flex-shrink: 0;
+    }
+    .dm-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 20px;
+    }
+    .dm-textarea {
+      width: 100%;
+      min-height: 200px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-primary);
+      resize: vertical;
+      font-family: inherit;
+      outline: none;
+    }
+    .dm-textarea:focus { border-color: #7c3aed; }
+
+    .dm-actions {
+      display: flex;
+      gap: 10px;
+      padding: 14px 20px 4px;
+      flex-shrink: 0;
+    }
+    .dm-btn {
+      flex: 1;
+      padding: 14px 10px;
+      border-radius: 14px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .dm-btn:active { opacity: 0.8; transform: scale(0.98); }
+    .btn-copy {
+      background: #7c3aed;
+      color: white;
+    }
+    .btn-open-xhs {
+      background: #ff2442;
+      color: white;
+    }
+    .dm-skip {
+      display: block;
+      text-align: center;
+      padding: 10px;
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════
+       CARD DETAIL SHEET (history)
+    ════════════════════════════════ */
+    .card-detail-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: flex-end;
+    }
+    .card-detail-backdrop.open { display: flex; }
+    .card-detail-sheet {
+      width: 100%;
+      background: var(--bg);
+      border-radius: 24px 24px 0 0;
+      height: 88vh;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      overflow: hidden;
+    }
+    .card-detail-backdrop.open .card-detail-sheet {
+      animation: slideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .card-detail-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 8px;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .card-detail-close-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+    .card-detail-reviewer {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .card-detail-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 12px 8px;
+    }
+    .card-detail-body::-webkit-scrollbar { display: none; }
+    /* Make the card inside detail fill width and not be draggable */
+    .card-detail-body .deal-card {
+      width: 100%;
+      margin: 0;
+      box-shadow: none;
+      border-radius: 16px;
+      transform: none !important;
+      cursor: default;
+      touch-action: pan-y;
+    }
+    .card-detail-swipe-hint {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px calc(var(--safe-bottom) + 10px);
+      background: white;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      font-size: 13px;
+      color: #7c3aed;
+      font-weight: 600;
+    }
+    .card-detail-swipe-hint.visible { display: flex; }
+    .swipe-hint-arrow {
+      font-size: 18px;
+      animation: nudgeRight 1.6s ease-in-out infinite;
+    }
+    @keyframes nudgeRight {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(6px); }
+    }
+    /* DM shortcut badge in history list */
+    .dm-shortcut {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      color: #7c3aed;
+      background: #f5f0ff;
+      border: 1px solid #ddd6fe;
+      border-radius: 20px;
+      padding: 2px 8px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .dm-shortcut:active { opacity: 0.7; }
+    /* DM modal history-mode extras */
+    .dm-history-actions {
+      padding: 8px 20px 4px;
+      flex-shrink: 0;
+    }
+    .btn-mark-contacted {
+      width: 100%;
+      background: #dcfce7;
+      color: #166534;
+      border: none;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-mark-contacted:active { opacity: 0.8; }
+
+    /* ════════════════════════════════
+       COMPLETION SCREEN
+    ════════════════════════════════ */
+    #screen-done {
+      background: var(--bg);
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 16px;
+      padding: 40px 32px;
+    }
+    .done-emoji { font-size: 72px; line-height: 1; }
+    .done-title { font-size: 26px; font-weight: 800; color: var(--text-primary); }
+    .done-stats {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin: 8px 0;
+    }
+    .done-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .done-stat-num { font-size: 36px; font-weight: 800; }
+    .done-stat-label { font-size: 13px; color: var(--text-secondary); }
+    .done-stat.likes .done-stat-num { color: var(--accent-green); }
+    .done-stat.passes .done-stat-num { color: var(--accent-red); }
+    .done-history-btn {
+      margin-top: 8px;
+      padding: 16px 32px;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .done-history-btn:active { opacity: 0.85; }
+
+    /* ════════════════════════════════
+       HISTORY SCREEN
+    ════════════════════════════════ */
+    #screen-history { background: var(--bg); }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px 10px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .back-btn {
+      background: none;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      color: #7c3aed;
+      cursor: pointer;
+      padding: 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .history-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 16px 20px;
+    }
+    .history-list::-webkit-scrollbar { display: none; }
+
+    .history-item {
+      background: white;
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      cursor: pointer;
+    }
+    .history-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .history-item-name {
+      font-size: 15px;
+      font-weight: 700;
+      flex: 1;
+    }
+    .swipe-badge {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .history-item-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .history-item-detail {
+      display: none;
+      margin-top: 12px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+    .history-item.expanded .history-item-detail { display: block; }
+    .history-detail-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+    .history-detail-value {
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+    .dm-badge {
+      display: inline-block;
+      background: #d1fae5;
+      color: #065f46;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 100px;
+    }
+
+    .empty-history {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 60px 20px;
+      font-size: 15px;
+    }
+
+    /* Misc utility */
+    .copy-feedback {
+      color: var(--accent-green) !important;
+    }
+
+    /* ════════════════════════════════
+       RUBRIC SCREEN
+    ════════════════════════════════ */
+    #screen-rubric { background: var(--bg); }
+
+    .rubric-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px 10px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .rubric-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    /* Tab bar */
+    .rubric-tab-bar {
+      display: flex;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+    .rubric-tab-bar::-webkit-scrollbar { display: none; }
+    .rubric-tab-btn {
+      flex: 1;
+      min-width: 72px;
+      padding: 10px 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .rubric-tab-btn.active { color: #7c3aed; border-bottom-color: #7c3aed; }
+
+    /* Tab content */
+    .rubric-tab-pane {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .rubric-tab-pane::-webkit-scrollbar { display: none; }
+    .rubric-tab-pane.active { display: flex; flex-direction: column; }
+
+    /* Tracks tab */
+    .rubric-tracks-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 8px 0 80px;
+    }
+    .rubric-tracks-footer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding: 12px 24px calc(var(--safe-bottom) + 12px);
+      background: white;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Custom keyword tag input */
+    .custom-kw-section {
+      padding: 16px 16px 80px;
+      border-top: 1px solid var(--border);
+    }
+    .custom-kw-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .custom-kw-count { font-weight: 400; color: #9ca3af; }
+    .custom-kw-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 32px;
+      margin-bottom: 8px;
+    }
+    .custom-kw-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #ede9fe;
+      color: #7c3aed;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 13px;
+    }
+    .custom-kw-tag-x {
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      color: #7c3aed;
+      opacity: 0.7;
+    }
+    .custom-kw-tag-x:hover { opacity: 1; }
+    .custom-kw-input-row {
+      display: flex;
+      gap: 8px;
+    }
+    .custom-kw-input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      outline: none;
+      background: #f9fafb;
+    }
+    .custom-kw-input:focus { border-color: #7c3aed; background: white; }
+    .custom-kw-add-btn {
+      padding: 8px 16px;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .custom-kw-hint {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+
+    .rubric-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 16px 20px;
+    }
+    .rubric-list::-webkit-scrollbar { display: none; }
+
+    /* Scoring row with category_name */
+    .rubric-scoring-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .rubric-category-input {
+      width: 56px;
+      flex-shrink: 0;
+      height: 30px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0 6px;
+      font-size: 11px;
+      font-family: inherit;
+      color: #7c3aed;
+      font-weight: 700;
+      background: #f5f0ff;
+      outline: none;
+      text-align: center;
+      cursor: pointer;
+    }
+    .rubric-category-input:focus { border-color: #7c3aed; background: white; }
+
+    .rubric-section {
+      background: white;
+      border-radius: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+
+    .rubric-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      border-bottom: 1px solid transparent;
+      transition: background 0.15s;
+    }
+    .rubric-section-header:active { background: #f9fafb; }
+    .rubric-section.open .rubric-section-header {
+      border-bottom-color: var(--border);
+    }
+
+    .rubric-section-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .rubric-section-chevron {
+      font-size: 14px;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+    .rubric-section.open .rubric-section-chevron {
+      transform: rotate(90deg);
+    }
+
+    .rubric-section-body {
+      display: none;
+      padding: 8px 0;
+    }
+    .rubric-section.open .rubric-section-body { display: block; }
+
+    .rubric-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      transition: background 0.15s;
+    }
+    .rubric-row:last-of-type { border-bottom: none; }
+    .rubric-row-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .rubric-question {
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.55;
+      cursor: pointer;
+      word-break: break-all;
+    }
+    .rubric-question:hover { color: #7c3aed; }
+
+    .rubric-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .rubric-tag {
+      display: inline-flex;
+      align-items: center;
+      background: #f3f4f6;
+      color: var(--text-secondary);
+      border-radius: 100px;
+      padding: 2px 9px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: border-color 0.15s, background 0.15s;
+      max-width: 200px;
+    }
+    .rubric-tag:hover { background: #ede9fe; color: #7c3aed; }
+    .rubric-tag.editing {
+      padding: 0;
+      background: white;
+      border-color: #7c3aed;
+    }
+    .rubric-tag.editing input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 11px;
+      font-family: inherit;
+      color: #7c3aed;
+      padding: 2px 9px;
+      width: 120px;
+    }
+
+    .rubric-tag-label {
+      color: var(--text-muted);
+      margin-right: 3px;
+      font-size: 10px;
+    }
+
+    .rubric-question-edit-input {
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text-primary);
+      line-height: 1.55;
+      border: 1px solid #7c3aed;
+      border-radius: 8px;
+      padding: 4px 8px;
+      width: 100%;
+      outline: none;
+      resize: none;
+      background: white;
+    }
+
+    .rubric-toggle {
+      flex-shrink: 0;
+      position: relative;
+      width: 36px;
+      height: 21px;
+      margin-top: 1px;
+    }
+    .rubric-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .rubric-toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #d1d5db;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .rubric-toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: white;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .rubric-toggle input:checked + .rubric-toggle-slider {
+      background: #7c3aed;
+    }
+    .rubric-toggle input:checked + .rubric-toggle-slider::before {
+      transform: translateX(15px);
+    }
+
+    .rubric-delete-btn {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #ef4444;
+      font-size: 16px;
+      padding: 2px 4px;
+      border-radius: 6px;
+      opacity: 0.5;
+      transition: opacity 0.15s;
+    }
+    .rubric-delete-btn:hover { opacity: 1; }
+
+    .rubric-add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: calc(100% - 28px);
+      margin: 8px 14px 4px;
+      padding: 9px 0;
+      border: 1.5px dashed #d1d5db;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .rubric-add-btn:hover { border-color: #7c3aed; color: #7c3aed; }
+    .rubric-add-btn:active { opacity: 0.75; }
+
+    .rubric-save-feedback {
+      font-size: 11px;
+      color: var(--accent-green);
+      margin-left: 4px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .rubric-save-feedback.show { opacity: 1; }
+
+    /* ════════════════════════════════
+       HISTORY VIEW TOGGLE
+    ════════════════════════════════ */
+    .history-view-toggle {
+      display: flex;
+      gap: 8px;
+      padding: 10px 16px 8px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-toggle-btn {
+      flex: 1;
+      padding: 8px 0;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: white;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .view-toggle-btn.active {
+      background: #7c3aed;
+      color: white;
+      border-color: #7c3aed;
+    }
+    .view-toggle-btn:active { opacity: 0.85; }
+
+    /* ════════════════════════════════
+       STATUS CHIP
+    ════════════════════════════════ */
+    .status-chip {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .status-chip.pending   { background: #9ca3af; color: white; }
+    .status-chip.contacted { background: #3b82f6; color: white; }
+    .status-chip.replied   { background: #22c55e; color: white; }
+    .status-chip.in_process { background: #7c3aed; color: white; }
+    .status-chip.rejected  { background: #ef4444; color: white; }
+
+    /* ════════════════════════════════
+       KANBAN VIEW
+    ════════════════════════════════ */
+    #history-kanban {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 16px 20px;
+      display: none;
+    }
+    #history-kanban.active { display: block; }
+    #history-kanban::-webkit-scrollbar { display: none; }
+
+    .kanban-section {
+      margin-bottom: 20px;
+    }
+    .kanban-section-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .kanban-section-count {
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--bg);
+      color: var(--text-muted);
+      border-radius: 100px;
+      padding: 1px 7px;
+    }
+    .kanban-scroll-row {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+    }
+    .kanban-scroll-row::-webkit-scrollbar { display: none; }
+
+    .kanban-mini-card {
+      flex-shrink: 0;
+      width: 120px;
+      background: white;
+      border-radius: 12px;
+      padding: 10px 10px 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .kanban-mini-card:active { border-color: #7c3aed; }
+    .kanban-mini-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+      margin-bottom: 4px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .kanban-mini-account {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .kanban-mini-date {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .kanban-empty {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 8px 4px;
+      font-style: italic;
+    }
+
+    /* ════════════════════════════════
+       STATUS PICKER BOTTOM SHEET
+    ════════════════════════════════ */
+    .status-picker-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: flex-end;
+    }
+    .status-picker-backdrop.open { display: flex; }
+    .status-picker-sheet {
+      width: 100%;
+      background: white;
+      border-radius: 24px 24px 0 0;
+      padding: 0 0 calc(var(--safe-bottom) + 12px);
+      transform: translateY(100%);
+    }
+    .status-picker-backdrop.open .status-picker-sheet {
+      animation: slideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .status-picker-handle {
+      width: 40px;
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      margin: 12px auto 0;
+    }
+    .status-picker-title {
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px 20px 10px;
+    }
+    .status-picker-options {
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .status-picker-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 2px solid var(--border);
+      background: white;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .status-picker-option:active { opacity: 0.8; }
+    .status-picker-option.selected {
+      border-color: #7c3aed;
+      background: #f5f3ff;
+      color: #7c3aed;
+    }
+    .status-picker-option .option-check { font-size: 16px; opacity: 0; }
+    .status-picker-option.selected .option-check { opacity: 1; }
+
+    /* ════════════════════════════════
+       AUTH SCREENS
+    ════════════════════════════════ */
+    #screen-auth, #screen-verify,
+    #screen-profile, #screen-tracks {
+      background: var(--bg);
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 380px;
+      background: white;
+      border-radius: 24px;
+      padding: 32px 24px 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .auth-logo {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+    .auth-logo span { color: #7c3aed; }
+    .auth-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .auth-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 9px 0;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .auth-tab.active {
+      background: white;
+      color: var(--text-primary);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+    }
+
+    .auth-form { display: flex; flex-direction: column; gap: 14px; }
+    .auth-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+    }
+    .auth-input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text-primary);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.15s;
+      box-sizing: border-box;
+    }
+    .auth-input:focus { border-color: #7c3aed; background: white; }
+
+    .auth-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 14px;
+      background: #7c3aed;
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 6px;
+    }
+    .auth-btn:active { opacity: 0.85; }
+    .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .auth-hint {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 14px;
+    }
+    .auth-hint a {
+      color: #7c3aed;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .auth-step-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .auth-step-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+    .auth-step-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      margin-bottom: 24px;
+    }
+    .auth-back-btn {
+      background: none;
+      border: none;
+      color: #7c3aed;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 20px;
+    }
+
+    /* Code input */
+    .code-input-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .code-digit {
+      width: 44px;
+      height: 54px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-primary);
+      background: var(--bg);
+      outline: none;
+      caret-color: #7c3aed;
+      transition: border-color 0.15s;
+    }
+    .code-digit:focus { border-color: #7c3aed; background: white; }
+
+    /* Gender segmented */
+    .gender-seg {
+      display: flex;
+      gap: 0;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .gender-seg-btn {
+      flex: 1;
+      padding: 10px 0;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .gender-seg-btn.active {
+      background: white;
+      color: #7c3aed;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+    }
+
+    /* Age slider */
+    .age-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .age-display {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-primary);
+      min-width: 42px;
+      text-align: center;
+    }
+    input[type=range].age-range {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: #e5e7eb;
+      outline: none;
+    }
+    input[type=range].age-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #7c3aed;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(124,58,237,0.4);
+    }
+
+    /* Tracks screen */
+    #screen-tracks {
+      padding: 0;
+      justify-content: flex-start;
+      align-items: stretch;
+      background: var(--bg);
+    }
+    .tracks-header {
+      padding: calc(var(--safe-top) + 14px) 20px 10px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tracks-selection-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .tracks-selection-count span { color: #7c3aed; font-weight: 700; }
+    .tracks-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 16px 100px;
+    }
+    .tracks-list::-webkit-scrollbar { display: none; }
+    .track-group {
+      background: white;
+      border-radius: 16px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .track-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.12s;
+    }
+    .track-group-header:active { background: #f9fafb; }
+    .track-group-name {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .track-group-badge {
+      font-size: 11px;
+      font-weight: 600;
+      background: #ede9fe;
+      color: #7c3aed;
+      border-radius: 100px;
+      padding: 2px 8px;
+    }
+    .track-group-chevron {
+      font-size: 12px;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+    .track-group.open .track-group-chevron { transform: rotate(90deg); }
+    .track-subs {
+      display: none;
+      padding: 0 12px 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .track-group.open .track-subs { display: flex; }
+    .track-sub-btn {
+      padding: 7px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 100px;
+      background: white;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .track-sub-btn:active { opacity: 0.8; }
+    .track-sub-btn.selected {
+      border-color: #7c3aed;
+      background: #ede9fe;
+      color: #7c3aed;
+      font-weight: 600;
+    }
+    .tracks-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 24px calc(var(--safe-bottom) + 12px);
+      background: white;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Rubric onboarding screen */
+    #screen-rubric-onboard {
+      padding: 0;
+      justify-content: flex-start;
+      align-items: stretch;
+      background: var(--bg);
+    }
+    .rubric-onboard-header {
+      padding: calc(var(--safe-top) + 14px) 20px 12px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .rubric-onboard-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 16px 100px;
+    }
+    .rubric-onboard-list::-webkit-scrollbar { display: none; }
+    .rubric-onboard-section {
+      background: white;
+      border-radius: 16px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .rubric-onboard-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      padding: 12px 16px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rubric-onboard-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rubric-onboard-item:last-child { border-bottom: none; }
+    /* Compact single-line input */
+    .rubric-onboard-input {
+      width: 100%;
+      height: 36px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--text-primary);
+      background: white;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.15s;
+    }
+    .rubric-onboard-input:focus { border-color: #7c3aed; }
+    .rubric-onboard-input::placeholder {
+      color: #9ca3af;
+      font-style: normal;
+    }
+    /* Scoring row: main input + 1=/5= on the right */
+    .rubric-onboard-scoring-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rubric-onboard-scoring-main { flex: 1; min-width: 0; }
+    .rubric-onboard-scale-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .rubric-onboard-scale-pair {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .rubric-onboard-scale-lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .rubric-onboard-scale-input {
+      width: 56px;
+      height: 26px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      padding: 0 5px;
+      font-size: 11px;
+      font-family: inherit;
+      color: var(--text-primary);
+      background: white;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .rubric-onboard-scale-input:focus { border-color: #7c3aed; }
+    .rubric-onboard-scale-input::placeholder { color: #c4b5d4; font-style: normal; }
+    /* Layer C: dims hint */
+    .rubric-onboard-dims-hint {
+      font-size: 12px;
+      color: #7c3aed;
+      background: #f5f3ff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 0 0 8px;
+      line-height: 1.5;
+    }
+    /* Add row button */
+    .rubric-onboard-add-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #7c3aed;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+      width: 100%;
+    }
+    .rubric-onboard-footer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding: 12px 24px calc(var(--safe-bottom) + 12px);
+      background: white;
+      border-top: 1px solid var(--border);
+    }
+    .rubric-onboard-skip {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .rubric-onboard-skip a { color: #7c3aed; text-decoration: none; }
+
+    /* Error toast */
+    .toast {
+      position: fixed;
+      bottom: calc(var(--safe-bottom) + 20px);
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #111827;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 999;
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ════════════════════════════════
+       REVIVAL STAMP
+    ════════════════════════════════ */
+    .revival-stamp {
+      position: absolute;
+      top: 110px;
+      right: 16px;
+      border: 2.5px solid #dc2626;
+      border-radius: 8px;
+      padding: 5px 8px;
+      color: #dc2626;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      writing-mode: vertical-rl;
+      opacity: 0.18;
+      transform: rotate(3deg);
+      pointer-events: none;
+      z-index: 0;
+      font-family: "STKaiti", "Kaiti SC", "STSong", serif;
+    }
+    .revival-reason {
+      font-size: 11px;
+      color: #b91c1c;
+      background: #fef2f2;
+      border-left: 3px solid #dc2626;
+      padding: 5px 10px;
+      margin: 0 0 8px;
+      border-radius: 0 6px 6px 0;
+      position: relative;
+      z-index: 1;
+      line-height: 1.4;
+    }
+
+    /* ════════════════════════════════
+       ADMIN SCREEN
+    ════════════════════════════════ */
+    .admin-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 16px 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .admin-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+    .admin-card-desc {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .admin-import-controls { display: flex; flex-direction: column; gap: 10px; }
+    .admin-kw-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .admin-label { font-size: 13px; color: #555; }
+    .admin-kw-toggle { display: flex; gap: 4px; }
+    .admin-toggle-btn {
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1.5px solid #e0e0e0;
+      background: #f5f5f5;
+      font-size: 12px;
+      cursor: pointer;
+      color: #555;
+    }
+    .admin-toggle-btn.active {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+    .admin-kw-textarea {
+      width: 100%;
+      min-height: 80px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .admin-num-input {
+      width: 56px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 13px;
+      text-align: center;
+    }
+    .admin-import-btn {
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 0;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .admin-import-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .import-progress-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 14px 0 6px;
+    }
+    .import-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .import-badge.running { background: #fef3c7; color: #92400e; }
+    .import-badge.done    { background: #d1fae5; color: #065f46; }
+    .import-badge.error   { background: #fee2e2; color: #991b1b; }
+    .import-progress-text { font-size: 12px; color: #555; }
+    .import-progress-bar-wrap {
+      height: 6px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .import-progress-bar {
+      height: 100%;
+      background: #1a1a1a;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .import-counts {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    .import-counts span b { color: #1a1a1a; }
+    .import-log {
+      background: #f8f8f8;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #444;
+      font-family: monospace;
+      max-height: 160px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+    .import-result-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .import-result-item:last-child { border-bottom: none; }
+    .import-result-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+    .import-result-sub  { font-size: 11px; color: #888; margin-top: 2px; }
+    .admin-load-btn {
+      background: #f5f5f5;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .admin-user-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f5f5f5;
+      font-size: 12px;
+    }
+    .admin-user-email { color: #1a1a1a; font-weight: 500; }
+    .admin-user-meta  { color: #999; }
+    .card-header {
+      position: relative;
+      z-index: 1;
+    }
+    .card-body {
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── AUTH SCREEN ── -->
+  <div id="screen-auth" class="screen">
+    <div class="auth-card">
+      <div class="auth-logo">MFV <span>Deal Flow</span></div>
+      <div class="auth-subtitle">Magic Find Ventures · AI 原生娱乐赛道</div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">登录</button>
+        <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">注册</button>
+      </div>
+      <!-- Login form -->
+      <div id="login-form" class="auth-form">
+        <div>
+          <div class="auth-label">邮箱</div>
+          <input class="auth-input" type="email" id="login-email" placeholder="your@email.com" autocomplete="email" />
+        </div>
+        <div>
+          <div class="auth-label">密码</div>
+          <input class="auth-input" type="password" id="login-password" placeholder="请输入密码" autocomplete="current-password" />
+        </div>
+        <button class="auth-btn" onclick="doLogin()">登录</button>
+      </div>
+      <!-- Register form -->
+      <div id="register-form" class="auth-form" style="display:none">
+        <div>
+          <div class="auth-label">邮箱</div>
+          <input class="auth-input" type="email" id="reg-email" placeholder="your@email.com" autocomplete="email" />
+        </div>
+        <button class="auth-btn" onclick="doSendCode()">发送验证码</button>
+        <div class="auth-hint">注册即代表加入 MFV Deal Flow 内测团队</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── VERIFY CODE SCREEN ── -->
+  <div id="screen-verify" class="screen">
+    <div class="auth-card">
+      <button class="auth-back-btn" onclick="showScreen('screen-auth')">← 返回</button>
+      <div class="auth-step-label">第 1 步 / 共 4 步</div>
+      <div class="auth-step-title">输入验证码</div>
+      <div class="auth-step-desc" id="verify-hint">验证码已发送至你的邮箱，有效期 10 分钟。</div>
+      <div class="code-input-row" id="codeInputRow">
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" />
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" />
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" />
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" />
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" />
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" />
+      </div>
+      <button class="auth-btn" style="margin-top:24px" onclick="doVerifyCode()">确认</button>
+      <div class="auth-hint" style="margin-top:12px">
+        没收到？<a href="#" onclick="resendCode();return false;">重新发送</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE SCREEN (step 2, includes password) ── -->
+  <div id="screen-profile" class="screen">
+    <div class="auth-card" style="overflow-y:auto;max-height:92vh">
+      <div class="auth-step-label">第 2 步 / 共 4 步</div>
+      <div class="auth-step-title">完善个人信息</div>
+      <div class="auth-step-desc">帮助 MFV 了解你的背景，影响你的个性化看板。</div>
+      <div class="auth-form">
+        <div>
+          <div class="auth-label">姓名</div>
+          <input class="auth-input" type="text" id="prof-name" placeholder="真实姓名" />
+        </div>
+        <div>
+          <div class="auth-label">性别</div>
+          <div class="gender-seg">
+            <button class="gender-seg-btn active" data-v="男" onclick="selectGender(this)">男</button>
+            <button class="gender-seg-btn" data-v="女" onclick="selectGender(this)">女</button>
+            <button class="gender-seg-btn" data-v="其他" onclick="selectGender(this)">其他</button>
+          </div>
+        </div>
+        <div>
+          <div class="auth-label">年龄</div>
+          <div class="age-slider-row">
+            <input type="range" class="age-range" id="prof-age" min="18" max="65" value="28"
+                   oninput="document.getElementById('age-disp').textContent=this.value" />
+            <div class="age-display" id="age-disp">28</div>
+          </div>
+        </div>
+        <div>
+          <div class="auth-label">就职机构</div>
+          <input class="auth-input" type="text" id="prof-inst" placeholder="如：Magic Find Ventures" />
+        </div>
+        <div>
+          <div class="auth-label">Title</div>
+          <input class="auth-input" type="text" id="prof-title" placeholder="如：投资经理、分析师" />
+        </div>
+
+        <!-- Divider -->
+        <div style="border-top:1px solid var(--border);margin:6px 0;"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);">🔒 密码设定</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:-8px;">下次可直接用邮箱 + 密码登录，至少 6 位。</div>
+        <div>
+          <div class="auth-label">密码</div>
+          <input class="auth-input" type="password" id="pw-password" placeholder="至少 6 位" autocomplete="new-password" />
+        </div>
+        <div>
+          <div class="auth-label">确认密码</div>
+          <input class="auth-input" type="password" id="pw-confirm" placeholder="再输入一遍" autocomplete="new-password" />
+        </div>
+
+        <button class="auth-btn" onclick="doSaveProfile()">继续</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TRACKS SCREEN ── -->
+  <div id="screen-tracks" class="screen">
+    <div class="tracks-header">
+      <div class="auth-step-label">第 3 步 / 共 4 步</div>
+      <div class="auth-step-title">选择关注赛道</div>
+      <div class="tracks-selection-count">已选 <span id="track-count">0</span>/5 个细分赛道</div>
+    </div>
+    <div class="tracks-list" id="tracksList">
+      <!-- Injected by JS -->
+    </div>
+    <div class="custom-kw-section">
+      <div class="custom-kw-label">
+        <span>自定义关键词</span>
+        <span class="custom-kw-count" id="onboard-kw-count">0/10</span>
+      </div>
+      <div class="custom-kw-tags" id="onboard-kw-tags"></div>
+      <div class="custom-kw-input-row">
+        <input class="custom-kw-input" id="onboard-kw-input" type="text"
+          placeholder="输入关键词，按回车添加"
+          onkeydown="if(event.key==='Enter'){addOnboardKw();event.preventDefault()}" />
+        <button class="custom-kw-add-btn" onclick="addOnboardKw()">添加</button>
+      </div>
+      <div class="custom-kw-hint">最多 10 个，直接用于小红书搜索词，补充赛道之外的方向</div>
+    </div>
+    <div class="tracks-footer">
+      <button class="auth-btn" onclick="doSaveTracks()">进入 Deal Flow →</button>
+    </div>
+  </div>
+
+  <!-- ── RUBRIC ONBOARDING SCREEN (step 5) ── -->
+  <div id="screen-rubric-onboard" class="screen">
+    <div class="rubric-onboard-header">
+      <div class="auth-step-label">第 4 步 / 共 4 步</div>
+      <div class="auth-step-title">初始化你的筛选清单</div>
+      <div class="auth-step-desc" style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5">
+        这是你个人的投资判断框架。用自己的语言填一遍，之后随时可以在主页 🧾 调整。
+      </div>
+    </div>
+    <div class="rubric-onboard-list" id="rubricOnboardList">
+      <!-- Injected by JS -->
+    </div>
+    <div class="rubric-onboard-footer">
+      <button class="auth-btn" onclick="doFinishOnboard()">完成，进入 Deal Flow →</button>
+      <div class="rubric-onboard-skip"><a href="#" onclick="enterApp(currentUser);return false;">跳过，先看看再说</a></div>
+    </div>
+  </div>
+
+  <!-- ── MAIN SCREEN ── -->
+  <div id="screen-main" class="screen">
+    <div class="header">
+      <div>
+        <div class="header-title">MFV <span>Deal Flow</span></div>
+        <div class="header-scan-date">📡 扫描于 2026.04.08</div>
+      </div>
+      <button class="header-btn" onclick="showHistory()" title="个人中心" id="btnProfile">👤</button>
+    </div>
+
+    <div class="card-area">
+      <div id="loadingMsg" style="text-align:center;color:#6b7280;font-size:15px;padding:20px;">
+        ⏳ 加载中...
+      </div>
+      <div id="errorMsg" style="display:none;text-align:center;color:#ef4444;font-size:14px;padding:20px;line-height:1.6;">
+        ❌ 加载失败<br>
+        <span id="errorDetail" style="font-size:12px;color:#9ca3af;"></span><br><br>
+        <button onclick="init()" style="padding:8px 20px;border-radius:8px;border:1px solid #ef4444;color:#ef4444;background:white;font-size:14px;">重试</button>
+      </div>
+      <div class="card-stack" id="cardStack">
+        <!-- Cards injected by JS -->
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <button class="action-btn btn-pass" id="btnPass" onclick="triggerSwipe('left')" title="跳过">💩</button>
+      <div class="card-counter" id="cardCounter">—</div>
+      <button class="action-btn btn-like" id="btnLike" onclick="triggerSwipe('right')" title="感兴趣">👍</button>
+    </div>
+  </div>
+
+  <!-- ── DONE SCREEN ── -->
+  <div id="screen-done" class="screen">
+    <div class="done-emoji">🎉</div>
+    <div class="done-title">今日扫描已完成</div>
+    <div class="done-stats">
+      <div class="done-stat likes">
+        <div class="done-stat-num" id="doneCountLike">0</div>
+        <div class="done-stat-label">感兴趣 👍</div>
+      </div>
+      <div class="done-stat passes">
+        <div class="done-stat-num" id="doneCountPass">0</div>
+        <div class="done-stat-label">跳过 💩</div>
+      </div>
+    </div>
+    <button class="done-history-btn" onclick="showHistory()">查看历史</button>
+  </div>
+
+  <!-- ── HISTORY SCREEN ── -->
+  <div id="screen-history" class="screen">
+    <div class="history-header">
+      <button class="back-btn" onclick="showMain()">← 返回</button>
+      <div class="history-title">📋 历史记录</div>
+      <div style="display:flex;gap:4px;align-items:center;margin-left:auto;">
+        <button class="header-btn" id="btnAdmin" style="display:none" onclick="showAdmin()" title="管理员">⚙️</button>
+        <button class="header-btn" onclick="showRubric()" title="筛选规则">🧾</button>
+      </div>
+    </div>
+    <div class="history-view-toggle">
+      <button class="view-toggle-btn active" id="btn-view-list" onclick="switchHistoryView('list')">列表</button>
+      <button class="view-toggle-btn" id="btn-view-kanban" onclick="switchHistoryView('kanban')">进度看板</button>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="empty-history">暂无记录</div>
+    </div>
+    <div id="history-kanban">
+      <!-- Kanban sections injected by JS -->
+    </div>
+  </div>
+
+  <!-- ── ADMIN SCREEN ── -->
+  <div id="screen-admin" class="screen">
+    <div class="history-header">
+      <button class="back-btn" onclick="showHistory()">← 返回</button>
+      <div class="history-title">⚙️ 管理员</div>
+    </div>
+
+    <!-- Batch Import Card -->
+    <div class="admin-card">
+      <div class="admin-card-title">📥 批量导入公司</div>
+      <div class="admin-card-desc">
+        从小红书搜索内容，用 AI 自动解析创业项目并写入数据库。
+      </div>
+
+      <div class="admin-import-controls">
+        <div class="admin-kw-row">
+          <label class="admin-label">关键词来源</label>
+          <div class="admin-kw-toggle">
+            <button class="admin-toggle-btn active" id="btnKwAll" onclick="setKwMode('all')">全部赛道</button>
+            <button class="admin-toggle-btn" id="btnKwCustom" onclick="setKwMode('custom')">自定义</button>
+          </div>
+        </div>
+        <textarea id="adminKwText" class="admin-kw-textarea" placeholder="每行一个关键词，例如：&#10;AI游戏&#10;AI原生应用&#10;大模型创业" style="display:none"></textarea>
+
+        <div class="admin-kw-row">
+          <label class="admin-label">每个关键词最多抓取</label>
+          <input type="number" id="adminMaxPer" class="admin-num-input" value="8" min="1" max="20" />
+          <span class="admin-label">条</span>
+        </div>
+
+        <button class="admin-import-btn" id="btnStartImport" onclick="startBatchImport()">
+          🚀 开始导入
+        </button>
+      </div>
+
+      <!-- Progress area (hidden until job starts) -->
+      <div id="importProgress" style="display:none">
+        <div class="import-progress-header">
+          <span id="importStatusBadge" class="import-badge running">运行中</span>
+          <span id="importProgressText" class="import-progress-text"></span>
+        </div>
+        <div class="import-progress-bar-wrap">
+          <div class="import-progress-bar" id="importProgressBar" style="width:0%"></div>
+        </div>
+        <div class="import-counts" id="importCounts"></div>
+        <div class="import-log" id="importLog"></div>
+        <div id="importResults" style="display:none">
+          <div class="admin-card-title" style="margin-top:16px">✅ 已保存的公司</div>
+          <div id="importResultsList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User list card -->
+    <div class="admin-card" style="margin-top:12px">
+      <div class="admin-card-title">👥 用户列表</div>
+      <div id="adminUserList"><button class="admin-load-btn" onclick="loadAdminUsers()">加载用户</button></div>
+    </div>
+  </div>
+
+  <!-- ── RUBRIC SCREEN ── -->
+  <div id="screen-rubric" class="screen">
+    <div class="rubric-header">
+      <button class="back-btn" onclick="hideRubric()">← 返回</button>
+      <div class="rubric-title">🧾 筛选规则</div>
+    </div>
+    <!-- Tab bar: 赛道 first -->
+    <div class="rubric-tab-bar">
+      <button class="rubric-tab-btn active" id="rtab-tracks"    onclick="switchRubricTab('tracks')">赛道</button>
+      <button class="rubric-tab-btn"        id="rtab-exclusion" onclick="switchRubricTab('exclusion')">排除条件</button>
+      <button class="rubric-tab-btn"        id="rtab-scoring"   onclick="switchRubricTab('scoring')">偏好权重</button>
+      <button class="rubric-tab-btn"        id="rtab-viability" onclick="switchRubricTab('viability')">现实性检验</button>
+    </div>
+    <!-- 赛道 tab -->
+    <div class="rubric-tab-pane active" id="rtabpane-tracks">
+      <div class="rubric-tracks-list" id="rubricTracksList">
+        <div class="empty-history">加载中...</div>
+      </div>
+      <div class="custom-kw-section" style="border-top:1px solid var(--border);padding-bottom:16px;">
+        <div class="custom-kw-label">
+          <span>自定义关键词</span>
+          <span class="custom-kw-count" id="rubric-kw-count">0/10</span>
+        </div>
+        <div class="custom-kw-tags" id="rubric-kw-tags"></div>
+        <div class="custom-kw-input-row">
+          <input class="custom-kw-input" id="rubric-kw-input" type="text"
+            placeholder="输入关键词，按回车添加"
+            onkeydown="if(event.key==='Enter'){addRubricKw();event.preventDefault()}" />
+          <button class="custom-kw-add-btn" onclick="addRubricKw()">添加</button>
+        </div>
+        <div class="custom-kw-hint">最多 10 个，直接用于小红书搜索词，补充赛道之外的方向</div>
+      </div>
+      <div class="rubric-tracks-footer">
+        <button class="auth-btn" onclick="saveRubricTracks()">保存赛道设置</button>
+      </div>
+    </div>
+    <!-- 排除条件 tab -->
+    <div class="rubric-tab-pane" id="rtabpane-exclusion">
+      <div class="rubric-list" id="rubricList-exclusion"><div class="empty-history">加载中...</div></div>
+    </div>
+    <!-- 偏好权重 tab -->
+    <div class="rubric-tab-pane" id="rtabpane-scoring">
+      <div class="rubric-list" id="rubricList-scoring"><div class="empty-history">加载中...</div></div>
+    </div>
+    <!-- 现实性检验 tab -->
+    <div class="rubric-tab-pane" id="rtabpane-viability">
+      <div class="rubric-list" id="rubricList-viability"><div class="empty-history">加载中...</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── PARCHMENT PANEL ── -->
+<div class="parchment-backdrop" id="parchmentBackdrop">
+  <div class="parchment-panel">
+    <div class="parchment-title">拒绝理由是：</div>
+    <textarea class="parchment-textarea" id="parchmentTextarea"
+      placeholder="写下你的想法..." rows="5"></textarea>
+    <button class="parchment-confirm" id="parchmentConfirm">确认</button>
+  </div>
+</div>
+
+<!-- ── STATUS PICKER BOTTOM SHEET ── -->
+<div class="status-picker-backdrop" id="statusPickerBackdrop">
+  <div class="status-picker-sheet">
+    <div class="status-picker-handle"></div>
+    <div class="status-picker-title">更新进度</div>
+    <div class="status-picker-options" id="statusPickerOptions">
+      <!-- Options injected by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ── CARD DETAIL SHEET (history) ── -->
+<div class="card-detail-backdrop" id="cardDetailBackdrop">
+  <div class="card-detail-sheet" id="cardDetailSheet">
+    <div class="card-detail-top-bar">
+      <button class="card-detail-close-btn" onclick="closeCardDetail()">✕ 关闭</button>
+      <span class="card-detail-reviewer" id="cardDetailReviewer"></span>
+    </div>
+    <div class="card-detail-body" id="cardDetailBody"></div>
+    <div class="card-detail-swipe-hint" id="cardDetailSwipeHint">
+      <span class="swipe-hint-arrow">→</span>
+      <span>右滑打开话术</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── DM MODAL ── -->
+<div class="dm-backdrop" id="dmBackdrop">
+  <div class="dm-sheet">
+    <div class="dm-handle"></div>
+    <div class="dm-title" id="dmTitle">✉️ 联系话术</div>
+    <div class="dm-body">
+      <textarea class="dm-textarea" id="dmTextarea" rows="10"></textarea>
+    </div>
+    <div class="dm-actions">
+      <button class="dm-btn btn-copy" id="btnCopy" onclick="copyDm()">复制话术</button>
+      <button class="dm-btn btn-open-xhs" id="btnOpenXhs" onclick="openXhs()">➡️ 去小红书</button>
+    </div>
+    <div class="dm-history-actions" id="dmHistoryActions" style="display:none">
+      <button class="btn-mark-contacted" onclick="closeDmHistory(true)">✅ 已发送，标记为「联系中」</button>
+    </div>
+    <a class="dm-skip" id="dmSkipBtn" onclick="closeDm(true)">跳过</a>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════════ */
+let companies = [];
+let currentIndex = 0;
+let swipeCountLike = 0;
+let swipeCountPass = 0;
+let pendingSwipe = null;
+let currentDmText = '';
+let currentXhsUrl = '';
+let cardShownAt = null; // ISO timestamp when current card was shown
+let userScoreDims = ['创意', '管线', '引力']; // updated from user's rubric scoring category_names
+
+let touchStartX = 0, touchStartY = 0, touchCurrentX = 0;
+let isDragging = false, dragLocked = false, activeCard = null;
+
+// Auth state
+let authToken = localStorage.getItem('mfv_token') || '';
+let currentUser = null;
+let pendingRegEmail = '';
+let selectedGender = '男';
+let selectedTracks = []; // [{main, sub}, ...]
+let onboardCustomKws = [];   // custom keywords during onboarding
+let rubricCustomKws = [];    // custom keywords in 🧾 赛道 tab
+
+/* ════════════════════════════════════════════════════════════
+   AUTH HELPERS
+════════════════════════════════════════════════════════════ */
+function authFetch(url, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  return fetch(url, { ...options, headers });
+}
+
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function saveAuth(token, user) {
+  authToken = token;
+  currentUser = user;
+  localStorage.setItem('mfv_token', token);
+  localStorage.setItem('mfv_user', JSON.stringify(user));
+  // Show admin button if is_admin
+  const btnAdmin = document.getElementById('btnAdmin');
+  if (btnAdmin) btnAdmin.style.display = user.is_admin ? 'flex' : 'none';
+}
+
+function clearAuth() {
+  authToken = '';
+  currentUser = null;
+  localStorage.removeItem('mfv_token');
+  localStorage.removeItem('mfv_user');
+}
+
+/* ════════════════════════════════════════════════════════════
+   AUTH FLOW
+════════════════════════════════════════════════════════════ */
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tab-login').classList.toggle('active', isLogin);
+  document.getElementById('tab-register').classList.toggle('active', !isLogin);
+  document.getElementById('login-form').style.display = isLogin ? 'flex' : 'none';
+  document.getElementById('register-form').style.display = isLogin ? 'none' : 'flex';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { showToast('请填写邮箱和密码'); return; }
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || '登录失败'); return; }
+    saveAuth(data.token, data.user);
+    enterApp(data.user);
+  } catch (e) {
+    showToast('网络错误，请重试');
+  }
+}
+
+async function doSendCode() {
+  const email = document.getElementById('reg-email').value.trim();
+  if (!email || !email.includes('@')) { showToast('请输入有效邮箱'); return; }
+  pendingRegEmail = email;
+  try {
+    const res = await fetch('/api/auth/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (res.status === 503) { showToast('📮 邮件服务暂时不可用，请 1 分钟后重试'); return; }
+    if (!res.ok) { showToast(data.error || '发送失败'); return; }
+    const hint = data.console_mode
+      ? `验证码已打印至服务器控制台（开发模式）`
+      : `验证码已发送至 ${email}`;
+    document.getElementById('verify-hint').textContent = hint;
+    showScreen('screen-verify');
+    // Focus first digit
+    setTimeout(() => document.querySelector('.code-digit').focus(), 300);
+  } catch (e) {
+    showToast('网络错误，请重试');
+  }
+}
+
+async function resendCode() {
+  if (!pendingRegEmail) return;
+  document.getElementById('reg-email').value = pendingRegEmail;
+  await doSendCode();
+  showToast('验证码已重新发送');
+}
+
+async function doVerifyCode() {
+  const digits = Array.from(document.querySelectorAll('.code-digit')).map(i => i.value).join('');
+  if (digits.length < 6) { showToast('请输入完整的 6 位验证码'); return; }
+  try {
+    const res = await fetch('/api/auth/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: pendingRegEmail, code: digits }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || '验证码错误'); return; }
+    saveAuth(data.token, data.user);
+    // After code verified → always go to profile (password is set there now)
+    if (data.user.profile_completed) {
+      enterApp(data.user);
+    } else {
+      showScreen('screen-profile');
+    }
+  } catch (e) {
+    showToast('网络错误，请重试');
+  }
+}
+
+function selectGender(btn) {
+  document.querySelectorAll('.gender-seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedGender = btn.dataset.v;
+}
+
+async function doSaveProfile() {
+  const name = document.getElementById('prof-name').value.trim();
+  const age = parseInt(document.getElementById('prof-age').value);
+  const institution = document.getElementById('prof-inst').value.trim();
+  const title = document.getElementById('prof-title').value.trim();
+  const pw = document.getElementById('pw-password').value;
+  const pwConfirm = document.getElementById('pw-confirm').value;
+
+  if (!name) { showToast('请填写姓名'); return; }
+  if (pw.length < 6) { showToast('密码至少 6 位'); return; }
+  if (pw !== pwConfirm) { showToast('两次密码不一致'); return; }
+
+  try {
+    // Save profile
+    const res = await authFetch('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ name, gender: selectedGender, age, institution, title }),
+    });
+    if (!res.ok) { showToast('保存失败'); return; }
+
+    // Save password
+    const pwRes = await authFetch('/api/auth/set-password', {
+      method: 'POST',
+      body: JSON.stringify({ password: pw }),
+    });
+    if (!pwRes.ok) { showToast('密码设置失败'); return; }
+
+    if (currentUser) {
+      currentUser.name = name;
+      currentUser.profile_completed = 1;
+      localStorage.setItem('mfv_user', JSON.stringify(currentUser));
+    }
+    renderTracksScreen();
+    showScreen('screen-tracks');
+  } catch (e) {
+    showToast('网络错误，请重试');
+  }
+}
+
+// Track data
+const TRACKS = [
+  { main: '人工智能', subs: ['大模型与基础设施', 'AI 原生应用', 'AI 原生内容与创意', '企业 AI 与 Agent', 'AI 硬件与边缘'] },
+  { main: '消费与娱乐', subs: ['游戏', '短视频与直播', '音乐与播客', '影视与 IP', '潮流与时尚', '体育与户外'] },
+  { main: '电商与新消费', subs: ['跨境电商', '社交电商', '品牌与新消费', 'DTC 品牌', '二手与循环'] },
+  { main: '企业服务与 SaaS', subs: ['销售与营销', '人力资源与组织', '财务与合规', '垂直行业 SaaS', '网络安全'] },
+  { main: '硬科技', subs: ['半导体与芯片', '机器人', '航空航天', '量子计算', '新材料与制造'] },
+  { main: '医疗健康', subs: ['数字医疗', '生物科技', '医疗器械', '心理健康', '养老与慢病'] },
+  { main: '金融科技', subs: ['支付与清算', '财富管理', '保险科技', '区块链与 Web3', '信贷与风控'] },
+  { main: '出行与物流', subs: ['自动驾驶', '新能源汽车', '城市出行', '供应链与物流', '低空经济'] },
+  { main: '教育科技', subs: ['K-12 教育', '职业与技能教育', '素质教育', '语言与文化'] },
+  { main: '气候与能源', subs: ['清洁能源', '碳中和与 ESG', '农业科技', '智慧城市'] },
+  { main: '社交与社区', subs: ['陌生人社交', '兴趣社区', '职场社交', 'Z 世代文化'] },
+  { main: '出海', subs: ['中国品牌全球化', 'SaaS 出海', '游戏出海', '内容出海'] },
+];
+
+function renderTracksScreen() {
+  const list = document.getElementById('tracksList');
+  list.innerHTML = TRACKS.map((group, gi) => `
+    <div class="track-group" id="tg-${gi}">
+      <div class="track-group-header" onclick="toggleTrackGroup(${gi})">
+        <div>
+          <span class="track-group-name">${group.main}</span>
+          <span class="track-group-badge" id="tg-badge-${gi}" style="display:none">已选</span>
+        </div>
+        <span class="track-group-chevron">›</span>
+      </div>
+      <div class="track-subs" id="tg-subs-${gi}">
+        ${group.subs.map(sub => `
+          <button class="track-sub-btn" data-main="${escHtml(group.main)}" data-sub="${escHtml(sub)}"
+                  onclick="toggleTrackSub(this,'${escHtml(group.main)}','${escHtml(sub)}',${gi})">
+            ${escHtml(sub)}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleTrackGroup(gi) {
+  document.getElementById('tg-' + gi).classList.toggle('open');
+}
+
+function toggleTrackSub(btn, main, sub, gi) {
+  const existing = selectedTracks.findIndex(t => t.main === main && t.sub === sub);
+  if (existing >= 0) {
+    selectedTracks.splice(existing, 1);
+    btn.classList.remove('selected');
+  } else {
+    if (selectedTracks.length >= 5) { showToast('最多选 5 个细分赛道'); return; }
+    selectedTracks.push({ main, sub });
+    btn.classList.add('selected');
+  }
+  document.getElementById('track-count').textContent = selectedTracks.length;
+  // Update group badge
+  const groupHasSelected = selectedTracks.some(t => t.main === main);
+  const badge = document.getElementById('tg-badge-' + gi);
+  if (badge) badge.style.display = groupHasSelected ? 'inline' : 'none';
+}
+
+async function doSaveTracks() {
+  if (selectedTracks.length === 0) { showToast('请至少选择 1 个赛道'); return; }
+  try {
+    const [r1, r2] = await Promise.all([
+      authFetch('/api/auth/tracks', {
+        method: 'PUT',
+        body: JSON.stringify({ tracks: selectedTracks }),
+      }),
+      authFetch('/api/user/keywords', {
+        method: 'PUT',
+        body: JSON.stringify({ keywords: onboardCustomKws }),
+      }),
+    ]);
+    if (!r1.ok) { showToast('保存失败'); return; }
+    // Step 5: rubric onboarding
+    await renderRubricOnboard();
+    showScreen('screen-rubric-onboard');
+  } catch (e) {
+    showToast('网络错误，请重试');
+  }
+}
+
+/* ── Onboarding custom keyword helpers ── */
+function renderOnboardKwTags() {
+  const container = document.getElementById('onboard-kw-tags');
+  const counter = document.getElementById('onboard-kw-count');
+  if (!container) return;
+  container.innerHTML = onboardCustomKws.map((kw, i) =>
+    `<span class="custom-kw-tag">${escHtml(kw)}<span class="custom-kw-tag-x" onclick="removeOnboardKw(${i})">×</span></span>`
+  ).join('');
+  if (counter) counter.textContent = `${onboardCustomKws.length}/10`;
+}
+function addOnboardKw() {
+  const input = document.getElementById('onboard-kw-input');
+  const kw = (input.value || '').trim();
+  if (!kw) return;
+  if (onboardCustomKws.length >= 10) { showToast('最多 10 个自定义关键词'); return; }
+  if (onboardCustomKws.includes(kw)) { showToast('已存在'); input.value = ''; return; }
+  onboardCustomKws.push(kw);
+  input.value = '';
+  renderOnboardKwTags();
+}
+function removeOnboardKw(i) {
+  onboardCustomKws.splice(i, 1);
+  renderOnboardKwTags();
+}
+
+/* ════════════════════════════════════════════════════════════
+   RUBRIC ONBOARDING (step 5)
+════════════════════════════════════════════════════════════ */
+// Placeholder samples per rubric category
+const RUBRIC_ONBOARD_SAMPLES = {
+  exclusion: [
+    'AI 是产品不可或缺的运转机制，而不只是一个辅助生产工具',
+    '帖子 7 天内发布，或互动数据仍在持续增长',
+    '赞+藏+评之和 ≥ 10，有真实用户互动',
+    '能识别出具体的项目名称或创始团队，而非泛泛的内容号',
+  ],
+  scoring: [
+    '这个创意是否只有极少数人才会想到？（1=普通，5=万里挑一的偏执）',
+    '创始人是否有坚持超过半年的证据？（1=无证据，5=放弃稳定工作/自掏腰包）',
+    '这个产品是否只有 AI 出现后才成立？（1=AI 前就能做，5=纯 AI 原生）',
+    'AI 在产品中的角色？（1=辅助生产，5=管线即产品）',
+    '小团队的 AI 放大倍数？（1=无明显放大，5=1 人干 10 人的活）',
+    'AI 管线的护城河深度？（1=随时可被替代，5=深度集成难以复制）',
+    '用户行为是否在生产内容或数据？（1=纯消费，5=每次互动都是创作）',
+    '是否有早期自发传播证据？（1=无，5=多群满员/内测溢出/自发二创）',
+    '互动质量如何？（1=无效刷屏，5=深度讨论/强代入感）',
+  ],
+  viability: [
+    '这是「值得投的公司」还是「值得观察的现象」？',
+    '这个人/团队能融资、能交付、能长大吗？',
+    '是否有任何收入或付费意愿信号？',
+  ],
+};
+
+async function renderRubricOnboard() {
+  let rubricData;
+  try {
+    const res = await authFetch('/api/rubric');
+    rubricData = await res.json();
+  } catch (e) {
+    rubricData = { exclusion: [], scoring: [], viability: [] };
+  }
+
+  const container = document.getElementById('rubricOnboardList');
+  const sections = [
+    { key: 'exclusion', label: '🚫 排除条件', desc: '不满足就直接淘汰，无需评分', scoring: false },
+    { key: 'scoring',   label: '⭐ 偏好权重', desc: '1–5 分评分维度，写下你的判断标准', scoring: true },
+    { key: 'viability', label: '🔍 现实性检验', desc: '最终的定性判断问题', scoring: false },
+  ];
+
+  // Layer C: extract ordered category names from scoring items for the hint
+  const scoringDims = [];
+  for (const item of (rubricData.scoring || [])) {
+    const n = (item.category_name || '').trim();
+    if (n && !scoringDims.includes(n)) scoringDims.push(n);
+    if (scoringDims.length >= 3) break;
+  }
+  const dimsHint = scoringDims.length
+    ? `「${scoringDims.join('·')}」`
+    : '「创意·管线·引力」';
+
+  container.innerHTML = sections.map(sec => {
+    // Show all scoring items (so all 3 dims × 3 questions are visible); limit others to 3
+    const allItems = rubricData[sec.key] || [];
+    const items = sec.scoring ? allItems : allItems.slice(0, 3);
+    const rows = items.map(item => _rubricOnboardRow(item, sec.scoring)).join('');
+    const addLabel = sec.scoring ? '添加评分维度' : '添加条件';
+    const hint = sec.scoring ? `
+      <div class="rubric-onboard-dims-hint">
+        📐 每行左侧可设置维度大类名称（如「创意·管线·引力」），将显示在每张卡片上。
+      </div>` : '';
+    return `
+      <div class="rubric-onboard-section">
+        <div class="rubric-onboard-section-title">${sec.label} <span style="font-weight:400;color:var(--text-muted)">${sec.desc}</span></div>
+        ${hint}
+        ${rows}
+        <button class="rubric-onboard-add-btn" onclick="addRubricOnboardRow(this,${sec.scoring})">＋ ${addLabel}</button>
+      </div>`;
+  }).join('');
+}
+
+function _rubricOnboardRow(item, isScoring) {
+  const rawQ = item ? (item.question || '') : '';
+  const q = escHtml(rawQ.replace(/^【[^】]*】\s*/, ''));
+  const rid = item ? `data-rubric-id="${item.id}"` : '';
+  if (isScoring) {
+    const catName = item ? escHtml(item.category_name || '') : '';
+    const s1 = item ? escHtml(item.scale_1 || '') : '';
+    const s5 = item ? escHtml(item.scale_5 || '') : '';
+    return `
+      <div class="rubric-onboard-item">
+        <div class="rubric-onboard-scoring-row">
+          <input type="text" class="rubric-category-input rubric-onboard-cat" ${rid}
+                 value="${catName}" placeholder="大类"
+                 title="维度名称（如：创意）" />
+          <div class="rubric-onboard-scoring-main">
+            <input type="text" class="rubric-onboard-input rubric-onboard-q" ${rid} placeholder="${q}" />
+          </div>
+          <div class="rubric-onboard-scale-col">
+            <div class="rubric-onboard-scale-pair">
+              <span class="rubric-onboard-scale-lbl">1=</span>
+              <input type="text" class="rubric-onboard-scale-input rubric-onboard-s1" ${rid} value="${s1}" placeholder="最差" />
+            </div>
+            <div class="rubric-onboard-scale-pair">
+              <span class="rubric-onboard-scale-lbl">5=</span>
+              <input type="text" class="rubric-onboard-scale-input rubric-onboard-s5" ${rid} value="${s5}" placeholder="最好" />
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="rubric-onboard-item">
+      <input type="text" class="rubric-onboard-input" ${rid} placeholder="${q}" />
+    </div>`;
+}
+
+function addRubricOnboardRow(btn, isScoring) {
+  const section = btn.closest('.rubric-onboard-section');
+  const newRow = document.createElement('div');
+  newRow.innerHTML = _rubricOnboardRow(null, isScoring);
+  const rowEl = newRow.firstElementChild;
+  section.insertBefore(rowEl, btn);
+  rowEl.querySelector('input').focus();
+}
+
+async function doFinishOnboard() {
+  // Save any rubric changes the user made in the onboarding form
+  const container = document.getElementById('rubricOnboardList');
+  if (container) {
+    // Collect all rows with data-rubric-id and save changed fields
+    const patches = [];
+
+    // Scoring rows: category name + scale_1 + scale_5
+    container.querySelectorAll('.rubric-onboard-cat[data-rubric-id]').forEach(catInput => {
+      const rid = parseInt(catInput.dataset.rubricId);
+      const row = catInput.closest('.rubric-onboard-item');
+      if (!row) return;
+      const qInput = row.querySelector('.rubric-onboard-q');
+      const s1Input = row.querySelector('.rubric-onboard-s1');
+      const s5Input = row.querySelector('.rubric-onboard-s5');
+      const patch = { id: rid };
+      if (catInput.value.trim()) patch.category_name = catInput.value.trim();
+      if (qInput && qInput.value.trim()) patch.question = qInput.value.trim();
+      if (s1Input && s1Input.value.trim()) patch.scale_1 = s1Input.value.trim();
+      if (s5Input && s5Input.value.trim()) patch.scale_5 = s5Input.value.trim();
+      if (Object.keys(patch).length > 1) patches.push(patch);
+    });
+
+    // Non-scoring rows (exclusion/viability): question text
+    container.querySelectorAll('.rubric-onboard-input[data-rubric-id]').forEach(inp => {
+      if (inp.classList.contains('rubric-onboard-q')) return; // already handled above
+      const rid = parseInt(inp.dataset.rubricId);
+      if (inp.value.trim()) patches.push({ id: rid, question: inp.value.trim() });
+    });
+
+    // Fire-and-forget patches
+    for (const patch of patches) {
+      const { id, ...fields } = patch;
+      authFetch(`/api/rubric/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      }).catch(() => {});
+    }
+  }
+  enterApp(currentUser);
+}
+
+function enterApp(user) {
+  currentUser = user;
+  // Show admin button
+  const btnAdmin = document.getElementById('btnAdmin');
+  if (btnAdmin) btnAdmin.style.display = user && user.is_admin ? 'flex' : 'none';
+  init();
+  showScreen('screen-main');
+}
+
+function goToNextOnboardingStep(user) {
+  if (!user.profile_completed) {
+    showScreen('screen-profile');
+  } else {
+    enterApp(user);
+  }
+}
+
+function showAdmin() {
+  showScreen('screen-admin');
+  document.getElementById('importProgress').style.display = 'none';
+}
+
+/* ── Admin: keyword mode ── */
+let _kwMode = 'all';
+function setKwMode(mode) {
+  _kwMode = mode;
+  document.getElementById('btnKwAll').classList.toggle('active', mode === 'all');
+  document.getElementById('btnKwCustom').classList.toggle('active', mode === 'custom');
+  document.getElementById('adminKwText').style.display = mode === 'custom' ? 'block' : 'none';
+}
+
+/* ── Batch import ── */
+let _importJobId = null;
+let _importPollTimer = null;
+
+async function startBatchImport() {
+  const btn = document.getElementById('btnStartImport');
+  btn.disabled = true;
+  btn.textContent = '⏳ 启动中…';
+
+  let keywords = null;
+  if (_kwMode === 'custom') {
+    const raw = (document.getElementById('adminKwText').value || '').trim();
+    keywords = raw.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!keywords.length) {
+      showToast('请输入至少一个关键词');
+      btn.disabled = false;
+      btn.textContent = '🚀 开始导入';
+      return;
+    }
+  }
+  const maxPer = parseInt(document.getElementById('adminMaxPer').value) || 8;
+
+  try {
+    const res = await authFetch('/api/admin/batch-import', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ keywords, max_per_keyword: maxPer }),
+    });
+    if (!res) throw new Error('no response');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'error');
+
+    _importJobId = data.job_id;
+    showToast(`🚀 导入任务已启动（${data.total_keywords} 个关键词）`);
+
+    // Show progress area
+    document.getElementById('importProgress').style.display = 'block';
+    document.getElementById('importResults').style.display = 'none';
+    document.getElementById('importResultsList').innerHTML = '';
+    document.getElementById('importLog').innerHTML = '';
+    document.getElementById('importProgressBar').style.width = '0%';
+    _pollImportJob();
+  } catch(e) {
+    showToast('❌ 启动失败：' + e.message);
+    btn.disabled = false;
+    btn.textContent = '🚀 开始导入';
+  }
+}
+
+function _pollImportJob() {
+  if (_importPollTimer) clearTimeout(_importPollTimer);
+  if (!_importJobId) return;
+
+  authFetch(`/api/admin/batch-import/${_importJobId}`)
+    .then(res => res && res.json())
+    .then(data => {
+      if (!data) return;
+      _renderImportProgress(data);
+      if (data.status === 'running') {
+        _importPollTimer = setTimeout(_pollImportJob, 2000);
+      } else {
+        // done or error — re-enable button
+        document.getElementById('btnStartImport').disabled = false;
+        document.getElementById('btnStartImport').textContent = '🚀 重新导入';
+      }
+    })
+    .catch(() => {
+      _importPollTimer = setTimeout(_pollImportJob, 3000);
+    });
+}
+
+function _renderImportProgress(data) {
+  const c = data.counts || {};
+  const done = c.keywords_done || 0;
+  const total = c.keywords_total || 1;
+  const pct = Math.round((done / total) * 100);
+
+  // Badge
+  const badge = document.getElementById('importStatusBadge');
+  badge.className = 'import-badge ' + (data.status || 'running');
+  badge.textContent = data.status === 'done' ? '完成' : data.status === 'error' ? '错误' : '运行中';
+
+  document.getElementById('importProgressText').textContent =
+    `${done} / ${total} 个关键词`;
+  document.getElementById('importProgressBar').style.width = pct + '%';
+
+  document.getElementById('importCounts').innerHTML = [
+    `<span>抓取帖子 <b>${c.feeds_fetched||0}</b></span>`,
+    `<span>AI 解析 <b>${c.feeds_parsed||0}</b></span>`,
+    `<span>保存公司 <b>${c.companies_saved||0}</b></span>`,
+    `<span>跳过 <b>${c.companies_skipped||0}</b></span>`,
+  ].join('');
+
+  // Log
+  const logEl = document.getElementById('importLog');
+  const lines = (data.log || []);
+  logEl.innerHTML = lines.map(l => `<div>${_esc(l)}</div>`).join('');
+  logEl.scrollTop = logEl.scrollHeight;
+
+  // Results
+  const results = data.results || [];
+  if (results.length) {
+    document.getElementById('importResults').style.display = 'block';
+    document.getElementById('importResultsList').innerHTML = results.map(r => `
+      <div class="import-result-item">
+        <div>
+          <div class="import-result-name">${_esc(r.name)}</div>
+          <div class="import-result-sub">${_esc(r.account)} · ${_esc(r.one_liner||'')}
+            <a href="${_esc(r.xhs_url)}" target="_blank" style="color:#1a1a1a;margin-left:6px">🔗</a>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function _esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── Admin: user list ── */
+async function loadAdminUsers() {
+  const el = document.getElementById('adminUserList');
+  el.textContent = '加载中…';
+  const res = await authFetch('/api/admin/users');
+  if (!res) return;
+  const users = await res.json();
+  if (!Array.isArray(users)) { el.textContent = '加载失败'; return; }
+  el.innerHTML = users.map(u => `
+    <div class="admin-user-row">
+      <span class="admin-user-email">${_esc(u.email)}${u.is_admin?' 👑':''}</span>
+      <span class="admin-user-meta">${_esc(u.name||'未填写')} · ${_esc(u.institution||'')}</span>
+    </div>
+  `).join('') || '<div class="admin-user-row"><span>暂无用户</span></div>';
+}
+
+/* ════════════════════════════════════════════════════════════
+   BOOT AUTH CHECK
+════════════════════════════════════════════════════════════ */
+async function checkAuth() {
+  const savedToken = localStorage.getItem('mfv_token');
+  if (!savedToken) {
+    showScreen('screen-auth');
+    return;
+  }
+  authToken = savedToken;
+  try {
+    const res = await authFetch('/api/auth/me');
+    if (!res.ok) {
+      clearAuth();
+      showScreen('screen-auth');
+      return;
+    }
+    const user = await res.json();
+    saveAuth(savedToken, user);
+    if (!user.profile_completed) {
+      goToNextOnboardingStep(user);
+    } else {
+      enterApp(user);
+    }
+  } catch (e) {
+    // Network error — still try to enter app
+    currentUser = JSON.parse(localStorage.getItem('mfv_user') || 'null');
+    if (currentUser) {
+      enterApp(currentUser);
+    } else {
+      showScreen('screen-auth');
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   CODE INPUT WIRING
+════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.code-digit').forEach((input, i, all) => {
+  input.addEventListener('paste', e => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+    if (!pasted) return;
+    // Distribute pasted digits across boxes starting from current position
+    [...pasted].forEach((ch, j) => {
+      if (i + j < all.length) {
+        all[i + j].value = ch;
+      }
+    });
+    // Focus the next empty box or last box
+    const nextEmpty = [...all].findIndex((d, idx) => idx >= i && !d.value);
+    (nextEmpty >= 0 ? all[nextEmpty] : all[all.length - 1]).focus();
+    if ([...all].every(d => d.value)) doVerifyCode();
+  });
+  input.addEventListener('input', () => {
+    // Handle multi-char input (some Android keyboards paste via input event)
+    if (input.value.length > 1) {
+      const digits = input.value.replace(/\D/g, '');
+      input.value = digits[0] || '';
+      [...digits.slice(1)].forEach((ch, j) => {
+        if (i + 1 + j < all.length) all[i + 1 + j].value = ch;
+      });
+    } else {
+      input.value = input.value.replace(/\D/g, '');
+    }
+    if (input.value && i < all.length - 1) all[i + 1].focus();
+    if ([...all].every(d => d.value)) doVerifyCode();
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !input.value && i > 0) all[i - 1].focus();
+  });
+});
+
+/* ════════════════════════════════════════════════════════════
+   INIT (DEAL FLOW)
+════════════════════════════════════════════════════════════ */
+async function init(retryCount = 0) {
+  const loading = document.getElementById('loadingMsg');
+  const errorBox = document.getElementById('errorMsg');
+  const errorDetail = document.getElementById('errorDetail');
+  if (loading) loading.style.display = 'block';
+  if (errorBox) errorBox.style.display = 'none';
+  try {
+    const res = await authFetch('/api/companies');
+    // 502/503 = tunnel cold start, auto-retry up to 4 times
+    if ((res.status === 502 || res.status === 503) && retryCount < 4) {
+      await new Promise(r => setTimeout(r, 1200));
+      return init(retryCount + 1);
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    companies = await res.json();
+    if (!Array.isArray(companies) || companies.length === 0) throw new Error('数据为空');
+    // Load rubric dims in background — updates card labels without blocking feed
+    authFetch('/api/rubric').then(r => r.ok ? r.json() : null).then(data => {
+      if (data) userScoreDims = extractScoreDims(data);
+    }).catch(() => {});
+    if (loading) loading.style.display = 'none';
+    renderStack();
+    updateCounter();
+  } catch (e) {
+    console.error('Failed to load companies', e);
+    if (loading) loading.style.display = 'none';
+    if (errorBox) errorBox.style.display = 'block';
+    if (errorDetail) errorDetail.textContent = e.message || String(e);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   CARD RENDERING
+════════════════════════════════════════════════════════════ */
+function renderStack() {
+  const stack = document.getElementById('cardStack');
+  stack.innerHTML = '';
+
+  // Render up to 3 cards (current + 2 peeking behind)
+  for (let i = Math.min(currentIndex + 2, companies.length - 1); i >= currentIndex; i--) {
+    const company = companies[i];
+    const card = buildCard(company);
+    const offset = i - currentIndex;
+    if (offset === 0) {
+      card.classList.add('active-card');
+      attachTouchHandlers(card, company);
+      cardShownAt = new Date().toISOString();
+    } else if (offset === 1) {
+      card.classList.add('peek-1');
+    } else if (offset === 2) {
+      card.classList.add('peek-2');
+    }
+    stack.appendChild(card);
+  }
+  activeCard = stack.querySelector('.active-card');
+}
+
+function buildCard(company) {
+  const card = document.createElement('div');
+  card.className = 'deal-card';
+  card.dataset.id = company.id;
+
+  const keywords = (company.mfv_keywords || '').split('·').map(k => k.trim()).filter(Boolean);
+  const keywordPills = keywords.map(k =>
+    `<span class="keyword-pill">${escHtml(k)}</span>`
+  ).join('');
+
+  const revivalStamp = company.is_revival ? '<div class="revival-stamp">起死回生</div>' : '';
+  const prevRejection = company.is_revival && company.previous_rejection
+    ? `<div class="revival-reason">♻️ 上次拒绝：${escHtml(company.previous_rejection)}</div>` : '';
+
+  card.innerHTML = `
+    <div class="swipe-overlay left-overlay" id="overlay-left-${company.id}">💩</div>
+    <div class="swipe-overlay right-overlay" id="overlay-right-${company.id}">👍</div>
+    ${revivalStamp}
+    <div class="card-header">
+      <div class="card-name">${escHtml(company.name)}</div>
+      <div class="card-oneliner">${escHtml(company.one_liner)}</div>
+    </div>
+    ${prevRejection}
+    <div class="card-body">
+      <div class="card-field">
+        <div class="card-field-label">📅 发布时间</div>
+        <div class="card-field-value">${escHtml(company.publish_date)}</div>
+      </div>
+      <div class="card-field">
+        <div class="card-field-label">🏠 账号</div>
+        <div class="card-field-value">${escHtml(company.account)}</div>
+      </div>
+      <div class="card-field">
+        <div class="card-field-label">🏷️ 类型</div>
+        <div class="card-field-value">${escHtml(company.type)}</div>
+      </div>
+      <div class="card-field">
+        <div class="card-field-label">💬 帖子摘要</div>
+        <div class="card-field-value">${escHtml(company.summary)}</div>
+      </div>
+      <div class="card-field">
+        <div class="card-field-label">${escHtml((currentUser && currentUser.institution) || 'MFV')}关注点</div>
+        <div class="keywords-row">${keywordPills}</div>
+        <div class="mfv-note-box">${escHtml(company.mfv_note)}</div>
+      </div>
+      <a class="xhs-link" href="${escHtml(company.xhs_url)}" target="_blank" rel="noopener">
+        🔗 查看原帖
+      </a>
+      ${buildAnalysisDrawer(company)}
+    </div>
+  `;
+  return card;
+}
+
+function buildScoreDots(score) {
+  const n = parseInt(score) || 0;
+  const color = n >= 4 ? '#22c55e' : n >= 3 ? '#f59e0b' : n >= 1 ? '#ef4444' : '#e5e7eb';
+  return Array.from({length: 5}, (_, i) =>
+    `<span class="score-dot" style="${i < n ? `background:${color}` : ''}"></span>`
+  ).join('');
+}
+
+function buildAnalysisDrawer(company) {
+  const [dim1, dim2, dim3] = userScoreDims;
+  // Always show score row — use gray dots if not yet scored
+  const scoreRow = `
+    <div class="score-row">
+      <div class="score-item">
+        <span class="score-dim-label">${escHtml(dim1)}</span>
+        <span class="score-dots">${buildScoreDots(company.score_origin)}</span>
+      </div>
+      <div class="score-item">
+        <span class="score-dim-label">${escHtml(dim2)}</span>
+        <span class="score-dots">${buildScoreDots(company.score_amplification)}</span>
+      </div>
+      <div class="score-item">
+        <span class="score-dim-label">${escHtml(dim3)}</span>
+        <span class="score-dots">${buildScoreDots(company.score_gravity)}</span>
+      </div>
+    </div>`;
+
+  const viabilityRow = company.viability_summary ? (() => {
+    const pills = company.viability_summary.split('·').map(p =>
+      `<span class="viability-pill">${escHtml(p.trim())}</span>`
+    ).join('');
+    return `<div class="viability-row"><span class="viability-label">现实核查</span>${pills}</div>`;
+  })() : '';
+
+  return `
+    <div class="analysis-drawer">
+      <button class="drawer-toggle" onclick="toggleDrawer(event, ${company.id})">
+        <span class="drawer-arrow" id="drawer-arrow-${company.id}">▸</span>筛选分析
+      </button>
+      <div class="drawer-content" id="drawer-content-${company.id}" style="display:none">
+        ${scoreRow}
+        ${viabilityRow}
+      </div>
+    </div>`;
+}
+
+function toggleDrawer(e, companyId) {
+  e.stopPropagation();
+  const content = document.getElementById('drawer-content-' + companyId);
+  const arrow = document.getElementById('drawer-arrow-' + companyId);
+  const isOpen = content.style.display !== 'none';
+  content.style.display = isOpen ? 'none' : 'block';
+  arrow.classList.toggle('open', !isOpen);
+}
+
+function updateCounter() {
+  const el = document.getElementById('cardCounter');
+  const total = companies.length;
+  if (currentIndex >= total) {
+    el.textContent = `${total}/${total}`;
+  } else {
+    el.textContent = `${currentIndex + 1}/${total}`;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   TOUCH / DRAG
+════════════════════════════════════════════════════════════ */
+function attachTouchHandlers(card, company) {
+  card.addEventListener('touchstart', onTouchStart, { passive: true });
+  card.addEventListener('touchmove', onTouchMove, { passive: false });
+  card.addEventListener('touchend', onTouchEnd, { passive: true });
+}
+
+function onTouchStart(e) {
+  if (e.touches.length !== 1) return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchCurrentX = touchStartX;
+  isDragging = false;
+  dragLocked = false;
+  activeCard = document.querySelector('.active-card');
+}
+
+function onTouchMove(e) {
+  if (!activeCard) return;
+  const dx = e.touches[0].clientX - touchStartX;
+  const dy = e.touches[0].clientY - touchStartY;
+  touchCurrentX = e.touches[0].clientX;
+
+  if (!isDragging && !dragLocked) {
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+      dragLocked = true; // vertical scroll intent
+      return;
+    }
+    if (Math.abs(dx) > 10) {
+      isDragging = true;
+    }
+  }
+
+  if (dragLocked) return;
+  if (!isDragging) return;
+
+  e.preventDefault(); // prevent page scroll during horizontal drag
+
+  const rotate = dx * 0.06;
+  activeCard.style.transition = 'none';
+  activeCard.style.transform = `translateX(${dx}px) rotate(${rotate}deg)`;
+
+  // Update overlays
+  const companyId = activeCard.dataset.id;
+  const leftOverlay = document.getElementById(`overlay-left-${companyId}`);
+  const rightOverlay = document.getElementById(`overlay-right-${companyId}`);
+  const progress = Math.min(Math.abs(dx) / 80, 1);
+
+  if (dx < 0) {
+    if (leftOverlay) leftOverlay.style.opacity = progress * 0.9;
+    if (rightOverlay) rightOverlay.style.opacity = 0;
+  } else {
+    if (rightOverlay) rightOverlay.style.opacity = progress * 0.9;
+    if (leftOverlay) leftOverlay.style.opacity = 0;
+  }
+}
+
+function onTouchEnd(e) {
+  if (!activeCard || dragLocked) {
+    isDragging = false;
+    dragLocked = false;
+    return;
+  }
+  if (!isDragging) return;
+
+  const dx = touchCurrentX - touchStartX;
+  const companyId = parseInt(activeCard.dataset.id);
+
+  if (Math.abs(dx) >= 80) {
+    const dir = dx < 0 ? 'left' : 'right';
+    executeSwipe(activeCard, companyId, dir);
+  } else {
+    // snap back
+    const leftOverlay = document.getElementById(`overlay-left-${companyId}`);
+    const rightOverlay = document.getElementById(`overlay-right-${companyId}`);
+    if (leftOverlay) leftOverlay.style.opacity = 0;
+    if (rightOverlay) rightOverlay.style.opacity = 0;
+    activeCard.classList.add('snap-back');
+    activeCard.style.transform = '';
+    activeCard.addEventListener('transitionend', () => {
+      activeCard.classList.remove('snap-back');
+    }, { once: true });
+  }
+
+  isDragging = false;
+  dragLocked = false;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SWIPE LOGIC
+════════════════════════════════════════════════════════════ */
+function triggerSwipe(direction) {
+  activeCard = document.querySelector('.active-card');
+  if (!activeCard) return;
+  const companyId = parseInt(activeCard.dataset.id);
+  executeSwipe(activeCard, companyId, direction);
+}
+
+function executeSwipe(card, companyId, direction) {
+  // Animate card off screen
+  card.style.transition = 'none';
+  card.classList.add(direction === 'left' ? 'fly-left' : 'fly-right');
+
+  const company = companies.find(c => c.id === companyId);
+
+  card.addEventListener('animationend', async () => {
+    card.remove();
+    currentIndex++;
+    updateCounter();
+
+    if (direction === 'left') {
+      swipeCountPass++;
+      showParchment(companyId);
+    } else {
+      swipeCountLike++;
+      await showDmModal(companyId, company);
+    }
+
+    // Update peek cards
+    updatePeekCards();
+  }, { once: true });
+}
+
+function updatePeekCards() {
+  const stack = document.getElementById('cardStack');
+  // Remove old peek classes
+  stack.querySelectorAll('.deal-card').forEach(c => {
+    c.classList.remove('peek-1', 'peek-2', 'active-card');
+  });
+  // Re-render if needed
+  renderStack();
+}
+
+/* ════════════════════════════════════════════════════════════
+   PARCHMENT (left swipe)
+════════════════════════════════════════════════════════════ */
+function showParchment(companyId) {
+  pendingSwipe = { direction: 'left', companyId };
+  document.getElementById('parchmentTextarea').value = '';
+  const backdrop = document.getElementById('parchmentBackdrop');
+  backdrop.classList.add('open');
+  setTimeout(() => document.getElementById('parchmentTextarea').focus(), 400);
+}
+
+document.getElementById('parchmentConfirm').addEventListener('click', async () => {
+  const note = document.getElementById('parchmentTextarea').value.trim();
+  if (pendingSwipe) {
+    await postSwipe(pendingSwipe.companyId, 'left', note, '');
+    pendingSwipe = null;
+  }
+  document.getElementById('parchmentBackdrop').classList.remove('open');
+  checkDone();
+});
+
+/* ════════════════════════════════════════════════════════════
+   CARD DETAIL SHEET (history)
+════════════════════════════════════════════════════════════ */
+let cardDetailRecord = null;
+let _detailSwipeTx = 0, _detailSwipeTy = 0, _detailSwiping = false, _detailLocked = false;
+
+function openCardDetail(swipeId) {
+  const r = historyRecords.find(r => r.id === swipeId);
+  if (!r) return;
+  cardDetailRecord = r;
+
+  // Build company object for buildCard
+  const company = {
+    id: r.company_id,
+    name: r.name,
+    one_liner: r.one_liner,
+    account: r.account,
+    type: r.type,
+    publish_date: r.publish_date,
+    summary: r.summary,
+    mfv_keywords: r.mfv_keywords,
+    mfv_note: r.mfv_note,
+    xhs_url: r.xhs_url,
+    score_origin: r.score_origin,
+    score_amplification: r.score_amplification,
+    score_gravity: r.score_gravity,
+    viability_summary: r.viability_summary,
+    is_revival: r.is_revival,
+    previous_rejection: r.previous_rejection,
+  };
+
+  const card = buildCard(company);
+  const body = document.getElementById('cardDetailBody');
+  body.innerHTML = '';
+  body.appendChild(card);
+  body.scrollTop = 0;
+
+  // Reviewer label (admin view shows who swiped)
+  const reviewer = document.getElementById('cardDetailReviewer');
+  reviewer.textContent = r.reviewer_name ? `由 ${r.reviewer_name}` : '';
+
+  // Show swipe hint only for pending right-swipes with DM text
+  const canDm = r.direction === 'right' && r.contact_status === 'pending';
+  const hint = document.getElementById('cardDetailSwipeHint');
+  hint.classList.toggle('visible', canDm);
+
+  document.getElementById('cardDetailBackdrop').classList.add('open');
+}
+
+function closeCardDetail() {
+  document.getElementById('cardDetailBackdrop').classList.remove('open');
+  cardDetailRecord = null;
+}
+
+// Touch → right swipe opens DM, left swipe closes detail
+const _cdSheet = document.getElementById('cardDetailSheet');
+_cdSheet.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  _detailSwipeTx = e.touches[0].clientX;
+  _detailSwipeTy = e.touches[0].clientY;
+  _detailSwiping = false;
+  _detailLocked = false;
+}, { passive: true });
+
+_cdSheet.addEventListener('touchmove', e => {
+  const dx = e.touches[0].clientX - _detailSwipeTx;
+  const dy = e.touches[0].clientY - _detailSwipeTy;
+  if (!_detailSwiping && !_detailLocked) {
+    if (Math.abs(dy) > Math.abs(dx) + 6) { _detailLocked = true; return; }
+    if (Math.abs(dx) > 10) _detailSwiping = true;
+  }
+  if (_detailSwiping) e.preventDefault();
+}, { passive: false });
+
+_cdSheet.addEventListener('touchend', e => {
+  if (!_detailSwiping) return;
+  const dx = e.changedTouches[0].clientX - _detailSwipeTx;
+  _detailSwiping = false;
+  if (dx > 80 && cardDetailRecord) {
+    const r = cardDetailRecord;
+    if (r.direction === 'right' && r.contact_status === 'pending') {
+      closeCardDetail();
+      showDmFromHistory(r);
+    }
+  } else if (dx < -80) {
+    closeCardDetail();
+  }
+});
+
+// Backdrop click closes detail
+document.getElementById('cardDetailBackdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeCardDetail();
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   DM MODAL (right swipe)
+════════════════════════════════════════════════════════════ */
+let dmHistorySwipeId = null; // non-null when DM opened from history
+
+async function showDmModal(companyId, company) {
+  // Main swipe mode
+  dmHistorySwipeId = null;
+  pendingSwipe = { direction: 'right', companyId };
+  document.getElementById('dmTextarea').value = '加载中...';
+  currentXhsUrl = company ? company.xhs_url : '';
+  _openDmBackdrop(false);
+
+  try {
+    const res = await authFetch(`/api/dm/${companyId}`);
+    const data = await res.json();
+    currentDmText = data.dm_text;
+    currentXhsUrl = data.xhs_url || currentXhsUrl;
+    document.getElementById('dmTextarea').value = currentDmText;
+  } catch (e) {
+    document.getElementById('dmTextarea').value = '加载失败，请手动填写话术。';
+  }
+}
+
+async function showDmFromHistory(record) {
+  // History mode — pre-loaded DM text, no new swipe
+  dmHistorySwipeId = record.id;
+  pendingSwipe = null;
+  currentXhsUrl = record.xhs_url || '';
+  document.getElementById('dmTextarea').value = '加载中...';
+  _openDmBackdrop(true);
+
+  // Try fresh DM text first; fall back to stored dm_text
+  try {
+    const res = await authFetch(`/api/dm/${record.company_id}`);
+    const data = await res.json();
+    currentDmText = data.dm_text || record.dm_text || '';
+    currentXhsUrl = data.xhs_url || currentXhsUrl;
+  } catch (e) {
+    currentDmText = record.dm_text || '';
+  }
+  document.getElementById('dmTextarea').value = currentDmText || '暂无话术，请手动填写。';
+}
+
+function _openDmBackdrop(isHistory) {
+  document.getElementById('dmTitle').textContent = isHistory ? '✉️ 发送话术' : '✉️ 联系话术';
+  document.getElementById('dmHistoryActions').style.display = isHistory ? 'block' : 'none';
+  document.getElementById('dmSkipBtn').textContent = isHistory ? '关闭' : '跳过';
+  document.getElementById('dmBackdrop').classList.add('open');
+}
+
+async function closeDmHistory(markContacted) {
+  if (markContacted && dmHistorySwipeId) {
+    try {
+      await authFetch(`/api/swipe/${dmHistorySwipeId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'contacted' }),
+      });
+      const rec = historyRecords.find(r => r.id === dmHistorySwipeId);
+      if (rec) rec.contact_status = 'contacted';
+      renderListView(historyRecords);
+      if (currentHistoryView === 'kanban') renderKanban(historyRecords);
+    } catch(e) { console.error('mark contacted failed', e); }
+  }
+  dmHistorySwipeId = null;
+  document.getElementById('dmBackdrop').classList.remove('open');
+  _resetDmModal();
+}
+
+async function copyDm() {
+  currentDmText = document.getElementById('dmTextarea').value;
+  try {
+    await navigator.clipboard.writeText(currentDmText);
+  } catch (e) {
+    const ta = document.getElementById('dmTextarea');
+    ta.select();
+    document.execCommand('copy');
+  }
+  const btn = document.getElementById('btnCopy');
+  btn.textContent = '已复制 ✓';
+  btn.classList.add('copy-feedback');
+  setTimeout(() => {
+    btn.textContent = '复制话术';
+    btn.classList.remove('copy-feedback');
+  }, 2000);
+}
+
+function openXhs() {
+  if (currentXhsUrl) window.open(currentXhsUrl, '_blank');
+}
+
+function _resetDmModal() {
+  const btn = document.getElementById('btnCopy');
+  btn.textContent = '复制话术';
+  btn.classList.remove('copy-feedback');
+}
+
+async function closeDm(skip = false) {
+  // If in history mode, delegate to history close
+  if (dmHistorySwipeId !== null) {
+    await closeDmHistory(false);
+    return;
+  }
+  if (pendingSwipe) {
+    const dmText = skip ? '' : document.getElementById('dmTextarea').value;
+    await postSwipe(pendingSwipe.companyId, 'right', '', dmText);
+    pendingSwipe = null;
+  }
+  document.getElementById('dmBackdrop').classList.remove('open');
+  _resetDmModal();
+  checkDone();
+}
+
+// Close DM when clicking backdrop
+document.getElementById('dmBackdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeDm(true);
+});
+
+document.getElementById('btnCopy').addEventListener('click', async function() {
+  await copyDm();
+});
+
+document.getElementById('btnOpenXhs').addEventListener('click', function() {
+  openXhs();
+  if (dmHistorySwipeId !== null) {
+    // stay open in history mode so user can still mark contacted
+  } else {
+    closeDm(false);
+  }
+});
+
+/* ════════════════════════════════════════════════════════════
+   API CALLS
+════════════════════════════════════════════════════════════ */
+async function postSwipe(companyId, direction, note, dmText) {
+  const decidedAt = new Date().toISOString();
+  try {
+    const res = await authFetch('/api/swipe', {
+      method: 'POST',
+      body: JSON.stringify({
+        company_id: companyId, direction, note, dm_text: dmText,
+        shown_at: cardShownAt, decided_at: decidedAt,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // P1 Task 5: B2 累计 ≥5 → 提示加入排除条件
+      if (data.suggest_exclusion) {
+        setTimeout(() => {
+          showToast(`💡 你已多次因「${data.suggest_exclusion}」拒绝，要加入排除条件吗？`, 5000);
+        }, 800);
+      }
+    }
+  } catch (e) {
+    console.error('swipe post failed', e);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   DONE / HISTORY
+════════════════════════════════════════════════════════════ */
+function checkDone() {
+  if (currentIndex >= companies.length) {
+    setTimeout(showDone, 300);
+  }
+}
+
+function showDone() {
+  document.getElementById('doneCountLike').textContent = swipeCountLike;
+  document.getElementById('doneCountPass').textContent = swipeCountPass;
+  showScreen('screen-done');
+}
+
+function showMain() {
+  showScreen('screen-main');
+}
+
+async function showHistory() {
+  await loadHistory();
+  showScreen('screen-history');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// History view state: 'list' or 'kanban'
+let historyRecords = [];
+let currentHistoryView = 'list';
+
+function switchHistoryView(view) {
+  currentHistoryView = view;
+  document.getElementById('btn-view-list').classList.toggle('active', view === 'list');
+  document.getElementById('btn-view-kanban').classList.toggle('active', view === 'kanban');
+  const listEl = document.getElementById('historyList');
+  const kanbanEl = document.getElementById('history-kanban');
+  if (view === 'list') {
+    listEl.style.display = '';
+    kanbanEl.classList.remove('active');
+  } else {
+    listEl.style.display = 'none';
+    kanbanEl.classList.add('active');
+    renderKanban(historyRecords);
+  }
+}
+
+function statusLabel(status) {
+  const labels = {
+    rejected: '💩 已拒绝',
+    pending: '待联系',
+    contacted: '联系中',
+    replied: '已回复',
+    in_process: '进入流程',
+  };
+  return labels[status] || status;
+}
+
+function statusChipHtml(swipeId, status, isLeftSwipe) {
+  if (isLeftSwipe) {
+    return `<div class="swipe-badge">💩</div>`;
+  }
+  const label = statusLabel(status);
+  return `<div class="status-chip ${escHtml(status)}" onclick="openStatusPicker(event, ${swipeId}, '${escHtml(status)}')">${escHtml(label)}</div>`;
+}
+
+async function loadHistory() {
+  const list = document.getElementById('historyList');
+  try {
+    const res = await authFetch('/api/history');
+    const records = await res.json();
+
+    // Normalize contact_status
+    records.forEach(r => {
+      if (r.direction === 'left') {
+        r.contact_status = r.contact_status || 'rejected';
+      } else {
+        r.contact_status = r.contact_status || 'pending';
+      }
+    });
+
+    historyRecords = records;
+
+    if (records.length === 0) {
+      list.innerHTML = '<div class="empty-history">暂无记录</div>';
+      if (currentHistoryView === 'kanban') {
+        renderKanban([]);
+      }
+      return;
+    }
+    renderListView(records);
+    if (currentHistoryView === 'kanban') {
+      renderKanban(records);
+    }
+  } catch (e) {
+    list.innerHTML = '<div class="empty-history">加载失败</div>';
+  }
+}
+
+function renderListView(records) {
+  const list = document.getElementById('historyList');
+  list.innerHTML = records.map(r => {
+    const isLike = r.direction === 'right';
+    const time = r.swiped_at || '';
+    const chipHtml = statusChipHtml(r.id, r.contact_status, !isLike);
+
+    // DM shortcut badge: visible for pending right-swipes (sticky until status changes)
+    const hasDmShortcut = isLike && r.contact_status === 'pending';
+    const dmShortcutHtml = hasDmShortcut
+      ? `<span class="dm-shortcut" onclick="event.stopPropagation();_openDmShortcut(${r.id})">📤 发话术</span>`
+      : '';
+
+    let meta = `${escHtml(r.account)} · ${escHtml(time)}`;
+    if (r.reviewer_name) meta += ` · ${escHtml(r.reviewer_name)}`;
+
+    return `
+      <div class="history-item" id="history-item-${r.id}" onclick="openCardDetail(${r.id})">
+        <div class="history-item-header">
+          <div class="history-item-name">${escHtml(r.name)}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            ${dmShortcutHtml}
+            ${chipHtml}
+          </div>
+        </div>
+        <div class="history-item-meta">${meta}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function _openDmShortcut(swipeId) {
+  const r = historyRecords.find(r => r.id === swipeId);
+  if (r) showDmFromHistory(r);
+}
+
+function renderKanban(records) {
+  const kanban = document.getElementById('history-kanban');
+  const sections = [
+    { status: 'rejected', label: '💩 已拒绝', filter: r => r.direction === 'left' },
+    { status: 'pending', label: '待联系', filter: r => r.direction === 'right' && r.contact_status === 'pending' },
+    { status: 'contacted', label: '联系中', filter: r => r.contact_status === 'contacted' },
+    { status: 'replied', label: '已回复', filter: r => r.contact_status === 'replied' },
+    { status: 'in_process', label: '进入流程', filter: r => r.contact_status === 'in_process' },
+  ];
+
+  kanban.innerHTML = sections.map(sec => {
+    const items = records.filter(sec.filter);
+    const cardsHtml = items.length === 0
+      ? `<div class="kanban-empty">暂无</div>`
+      : items.map(r => `
+          <div class="kanban-mini-card" onclick="openStatusPicker(event, ${r.id}, '${escHtml(r.contact_status)}')">
+            <div class="kanban-mini-name">${escHtml(r.name)}</div>
+            <div class="kanban-mini-account">${escHtml(r.account)}</div>
+            <div class="kanban-mini-date">${escHtml((r.swiped_at || '').slice(0, 10))}</div>
+          </div>
+        `).join('');
+    return `
+      <div class="kanban-section">
+        <div class="kanban-section-header">
+          ${escHtml(sec.label)}
+          <span class="kanban-section-count">${items.length}</span>
+        </div>
+        <div class="kanban-scroll-row">${cardsHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleHistoryItem(el) {
+  el.classList.toggle('expanded');
+}
+
+/* ════════════════════════════════════════════════════════════
+   STATUS PICKER
+════════════════════════════════════════════════════════════ */
+let statusPickerSwipeId = null;
+let statusPickerCurrentStatus = null;
+
+function openStatusPicker(e, swipeId, currentStatus) {
+  e.stopPropagation();
+  statusPickerSwipeId = swipeId;
+  statusPickerCurrentStatus = currentStatus;
+
+  const record = historyRecords.find(r => r.id === swipeId);
+  const isLeftSwipe = record && record.direction === 'left';
+
+  const options = isLeftSwipe
+    ? [{ value: 'rejected', label: '💩 已拒绝' }]
+    : [
+        { value: 'pending', label: '待联系' },
+        { value: 'contacted', label: '联系中' },
+        { value: 'replied', label: '已回复' },
+        { value: 'in_process', label: '进入流程' },
+      ];
+
+  const optionsEl = document.getElementById('statusPickerOptions');
+  optionsEl.innerHTML = options.map(opt => `
+    <button class="status-picker-option ${opt.value === currentStatus ? 'selected' : ''}"
+            onclick="selectStatus('${opt.value}')">
+      ${escHtml(opt.label)}
+      <span class="option-check">✓</span>
+    </button>
+  `).join('');
+
+  document.getElementById('statusPickerBackdrop').classList.add('open');
+}
+
+function closeStatusPicker() {
+  document.getElementById('statusPickerBackdrop').classList.remove('open');
+  statusPickerSwipeId = null;
+  statusPickerCurrentStatus = null;
+}
+
+async function selectStatus(newStatus) {
+  const swipeId = statusPickerSwipeId;
+  if (!swipeId) return;
+  closeStatusPicker();
+  try {
+    await authFetch(`/api/swipe/${swipeId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: newStatus }),
+    });
+    // Update local records
+    const rec = historyRecords.find(r => r.id === swipeId);
+    if (rec) rec.contact_status = newStatus;
+    // Re-render current view
+    renderListView(historyRecords);
+    if (currentHistoryView === 'kanban') renderKanban(historyRecords);
+  } catch (e) {
+    console.error('selectStatus failed', e);
+  }
+}
+
+// Close status picker when clicking backdrop
+document.getElementById('statusPickerBackdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeStatusPicker();
+});
+
+/* ════════════════════════════════════════════════════════════
+   RUBRIC
+════════════════════════════════════════════════════════════ */
+let rubricTracksSelected = []; // tracks being edited in 🧾 赛道 tab
+
+async function showRubric() {
+  showScreen('screen-rubric');
+  switchRubricTab('tracks'); // always open on 赛道 tab
+  await Promise.all([loadRubricTracks(), loadRubric()]);
+}
+
+function hideRubric() {
+  showScreen('screen-main');
+}
+
+function switchRubricTab(tab) {
+  document.querySelectorAll('.rubric-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.rubric-tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('rtab-' + tab).classList.add('active');
+  document.getElementById('rtabpane-' + tab).classList.add('active');
+}
+
+/* ── 赛道 tab ── */
+async function loadRubricTracks() {
+  rubricTracksSelected = [];
+  rubricCustomKws = [];
+  try {
+    const [r1, r2] = await Promise.all([
+      authFetch('/api/auth/tracks'),
+      authFetch('/api/user/keywords'),
+    ]);
+    if (r1.ok) {
+      const data = await r1.json();
+      rubricTracksSelected = (data.tracks || []).map(t => ({ main: t.track_main, sub: t.track_sub }));
+    }
+    if (r2.ok) {
+      const data = await r2.json();
+      rubricCustomKws = data.keywords || [];
+    }
+  } catch (e) {}
+  renderRubricTracksUI();
+  renderRubricKwTags();
+}
+
+function renderRubricTracksUI() {
+  const list = document.getElementById('rubricTracksList');
+  list.innerHTML = TRACKS.map((group, gi) => {
+    const hasSelected = rubricTracksSelected.some(t => t.main === group.main);
+    return `
+      <div class="track-group ${hasSelected ? 'open' : ''}" id="rtg-${gi}">
+        <div class="track-group-header" onclick="toggleRubricTrackGroup(${gi})">
+          <div>
+            <span class="track-group-name">${group.main}</span>
+            <span class="track-group-badge" id="rtg-badge-${gi}" style="display:${hasSelected?'inline':'none'}">已选</span>
+          </div>
+          <span class="track-group-chevron">›</span>
+        </div>
+        <div class="track-subs" id="rtg-subs-${gi}">
+          ${group.subs.map(sub => {
+            const sel = rubricTracksSelected.some(t => t.main === group.main && t.sub === sub);
+            return `<button class="track-sub-btn ${sel?'selected':''}"
+              onclick="toggleRubricTrackSub(this,'${escHtml(group.main)}','${escHtml(sub)}',${gi})">${escHtml(sub)}</button>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+  updateRubricTrackCount();
+}
+
+function toggleRubricTrackGroup(gi) {
+  document.getElementById('rtg-' + gi).classList.toggle('open');
+}
+
+function toggleRubricTrackSub(btn, main, sub, gi) {
+  const idx = rubricTracksSelected.findIndex(t => t.main === main && t.sub === sub);
+  if (idx >= 0) {
+    rubricTracksSelected.splice(idx, 1);
+    btn.classList.remove('selected');
+  } else {
+    if (rubricTracksSelected.length >= 5) { showToast('最多选 5 个细分赛道'); return; }
+    rubricTracksSelected.push({ main, sub });
+    btn.classList.add('selected');
+  }
+  const groupHasSelected = rubricTracksSelected.some(t => t.main === main);
+  document.getElementById('rtg-badge-' + gi).style.display = groupHasSelected ? 'inline' : 'none';
+  updateRubricTrackCount();
+}
+
+function updateRubricTrackCount() {
+  // Reuse footer button label to show count
+  const btn = document.querySelector('.rubric-tracks-footer .auth-btn');
+  if (btn) btn.textContent = `保存赛道设置（已选 ${rubricTracksSelected.length}/5）`;
+}
+
+async function saveRubricTracks() {
+  if (rubricTracksSelected.length === 0) { showToast('请至少选择 1 个赛道'); return; }
+  try {
+    const [r1, r2] = await Promise.all([
+      authFetch('/api/auth/tracks', {
+        method: 'PUT',
+        body: JSON.stringify({ tracks: rubricTracksSelected }),
+      }),
+      authFetch('/api/user/keywords', {
+        method: 'PUT',
+        body: JSON.stringify({ keywords: rubricCustomKws }),
+      }),
+    ]);
+    if (!r1.ok) { showToast('保存失败'); return; }
+    showToast('✅ 赛道与关键词已保存，正在刷新 feed…');
+    currentIndex = 0;
+    init();
+  } catch (e) {
+    showToast('网络错误');
+  }
+}
+
+/* ── Rubric custom keyword helpers ── */
+function renderRubricKwTags() {
+  const container = document.getElementById('rubric-kw-tags');
+  const counter = document.getElementById('rubric-kw-count');
+  if (!container) return;
+  container.innerHTML = rubricCustomKws.map((kw, i) =>
+    `<span class="custom-kw-tag">${escHtml(kw)}<span class="custom-kw-tag-x" onclick="removeRubricKw(${i})">×</span></span>`
+  ).join('');
+  if (counter) counter.textContent = `${rubricCustomKws.length}/10`;
+}
+function addRubricKw() {
+  const input = document.getElementById('rubric-kw-input');
+  const kw = (input.value || '').trim();
+  if (!kw) return;
+  if (rubricCustomKws.length >= 10) { showToast('最多 10 个自定义关键词'); return; }
+  if (rubricCustomKws.includes(kw)) { showToast('已存在'); input.value = ''; return; }
+  rubricCustomKws.push(kw);
+  input.value = '';
+  renderRubricKwTags();
+}
+function removeRubricKw(i) {
+  rubricCustomKws.splice(i, 1);
+  renderRubricKwTags();
+}
+
+/* ── Rubric sections ── */
+function extractScoreDims(rubricData) {
+  const seen = [];
+  for (const item of (rubricData.scoring || [])) {
+    const n = (item.category_name || '').trim();
+    if (n && !seen.includes(n)) seen.push(n);
+    if (seen.length >= 3) break;
+  }
+  const defaults = ['创意', '管线', '引力'];
+  while (seen.length < 3) seen.push(defaults[seen.length]);
+  return seen;
+}
+
+async function loadRubric() {
+  try {
+    const res = await authFetch('/api/rubric');
+    const data = await res.json();
+    userScoreDims = extractScoreDims(data);
+    renderRubric(data);
+  } catch (e) {
+    ['exclusion','scoring','viability'].forEach(k => {
+      const el = document.getElementById('rubricList-' + k);
+      if (el) el.innerHTML = '<div class="empty-history">加载失败</div>';
+    });
+  }
+}
+
+function renderRubric(data) {
+  const sections = [
+    { key: 'exclusion', label: '🚫 排除条件', desc: '必须满足才进入评分环节' },
+    { key: 'scoring',   label: '⭐ 偏好权重', desc: '1–5 分评分维度' },
+    { key: 'viability', label: '🔍 现实性检验', desc: '最终人工判断问题' },
+  ];
+  sections.forEach(sec => {
+    const container = document.getElementById('rubricList-' + sec.key);
+    if (!container) return;
+    const items = data[sec.key] || [];
+    container.innerHTML = `
+      <div style="padding:12px 16px 80px">
+        ${items.map(item => buildRubricRow(item, sec.key)).join('')}
+        <button class="rubric-add-btn" onclick="addRubricItem('${sec.key}')">＋ 添加问题</button>
+      </div>`;
+  });
+}
+
+function buildRubricRow(item, category) {
+  const checked = item.enabled ? 'checked' : '';
+  const qDisplay = escHtml((item.question || '').replace(/^【[^】]*】\s*/, ''));
+
+  if (category === 'scoring') {
+    const catName = escHtml(item.category_name || '');
+    const s1 = item.scale_1 || '未设置';
+    const s5 = item.scale_5 || '未设置';
+    return `
+      <div class="rubric-row" id="rubric-row-${item.id}">
+        <input class="rubric-category-input" value="${catName}" placeholder="类别"
+               onchange="patchRubricItem(${item.id},{category_name:this.value})"
+               title="卡片显示的维度名称" />
+        <div class="rubric-row-content">
+          <div class="rubric-question" id="rubric-q-${item.id}" onclick="editQuestion(${item.id}, this)">${qDisplay}</div>
+          <div class="rubric-tags">
+            <span class="rubric-tag" id="tag-scale1-${item.id}" onclick="editTag(${item.id}, 'scale_1', this)">
+              <span class="rubric-tag-label">1=</span>${escHtml(s1)}
+            </span>
+            <span class="rubric-tag" id="tag-scale5-${item.id}" onclick="editTag(${item.id}, 'scale_5', this)">
+              <span class="rubric-tag-label">5=</span>${escHtml(s5)}
+            </span>
+          </div>
+        </div>
+        <label class="rubric-toggle" title="启用/禁用">
+          <input type="checkbox" ${checked} onchange="toggleRubricItem(${item.id}, this.checked)">
+          <span class="rubric-toggle-slider"></span>
+        </label>
+        <button class="rubric-delete-btn" onclick="deleteRubricItem(${item.id})" title="删除">🗑</button>
+      </div>`;
+  }
+
+  let tagsHtml = '';
+  if (category === 'exclusion' && item.threshold) {
+    tagsHtml = `
+      <div class="rubric-tags">
+        <span class="rubric-tag" id="tag-threshold-${item.id}" onclick="editTag(${item.id}, 'threshold', this)">
+          <span class="rubric-tag-label">条件：</span>${escHtml(item.threshold)}
+        </span>
+      </div>`;
+  }
+
+  return `
+    <div class="rubric-row" id="rubric-row-${item.id}">
+      <div class="rubric-row-content">
+        <div class="rubric-question" id="rubric-q-${item.id}" onclick="editQuestion(${item.id}, this)">${qDisplay}</div>
+        ${tagsHtml}
+      </div>
+      <label class="rubric-toggle" title="启用/禁用">
+        <input type="checkbox" ${checked} onchange="toggleRubricItem(${item.id}, this.checked)">
+        <span class="rubric-toggle-slider"></span>
+      </label>
+      <button class="rubric-delete-btn" onclick="deleteRubricItem(${item.id})" title="删除">🗑</button>
+    </div>`;
+}
+
+function toggleSection(category) {
+  const sec = document.getElementById('rubric-sec-' + category);
+  if (sec) sec.classList.toggle('open');
+}
+
+function editQuestion(id, el) {
+  if (el.querySelector('textarea')) return; // already editing
+  const current = el.textContent.trim();
+  const ta = document.createElement('textarea');
+  ta.className = 'rubric-question-edit-input';
+  ta.value = current;
+  ta.rows = 2;
+  el.innerHTML = '';
+  el.appendChild(ta);
+  ta.focus();
+
+  const save = async () => {
+    const val = ta.value.trim() || current;
+    el.innerHTML = escHtml(val);
+    await patchRubricItem(id, { question: val });
+    showSaveFeedback(el);
+  };
+  ta.addEventListener('blur', save, { once: true });
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ta.blur(); }
+    if (e.key === 'Escape') { el.innerHTML = escHtml(current); }
+  });
+}
+
+function editTag(id, field, el) {
+  if (el.querySelector('input')) return; // already editing
+  // Get label span text to preserve it
+  const labelSpan = el.querySelector('.rubric-tag-label');
+  const labelText = labelSpan ? labelSpan.textContent : '';
+  const current = el.textContent.replace(labelText, '').trim();
+
+  el.classList.add('editing');
+  el.innerHTML = '';
+
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = current;
+  el.appendChild(inp);
+  inp.focus();
+  inp.select();
+
+  const save = async () => {
+    const val = inp.value.trim() || current;
+    el.classList.remove('editing');
+    el.innerHTML = `<span class="rubric-tag-label">${escHtml(labelText)}</span>${escHtml(val)}`;
+    await patchRubricItem(id, { [field]: val });
+    showSaveFeedback(el);
+  };
+  inp.addEventListener('blur', save, { once: true });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') {
+      el.classList.remove('editing');
+      el.innerHTML = `<span class="rubric-tag-label">${escHtml(labelText)}</span>${escHtml(current)}`;
+    }
+  });
+}
+
+async function addRubricItem(category) {
+  try {
+    const res = await authFetch('/api/rubric', {
+      method: 'POST',
+      body: JSON.stringify({ category, sort_order: 99, question: '新问题（点击编辑）' }),
+    });
+    const result = await res.json();
+    if (result.ok) await loadRubric();
+  } catch (e) {
+    console.error('addRubricItem failed', e);
+  }
+}
+
+async function deleteRubricItem(id) {
+  if (!confirm('确认删除此问题？')) return;
+  try {
+    await authFetch(`/api/rubric/${id}`, { method: 'DELETE' });
+    const row = document.getElementById('rubric-row-' + id);
+    if (row) row.remove();
+  } catch (e) {
+    console.error('deleteRubricItem failed', e);
+  }
+}
+
+async function toggleRubricItem(id, enabled) {
+  await patchRubricItem(id, { enabled: enabled ? 1 : 0 });
+}
+
+async function patchRubricItem(id, fields) {
+  try {
+    await authFetch(`/api/rubric/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(fields),
+    });
+  } catch (e) {
+    console.error('patchRubricItem failed', e);
+  }
+}
+
+function showSaveFeedback(nearEl) {
+  // Create a temporary "已保存" label near the element
+  const fb = document.createElement('span');
+  fb.textContent = ' 已保存';
+  fb.className = 'rubric-save-feedback';
+  nearEl.parentNode.appendChild(fb);
+  requestAnimationFrame(() => fb.classList.add('show'));
+  setTimeout(() => {
+    fb.classList.remove('show');
+    setTimeout(() => fb.remove(), 300);
+  }, 1500);
+}
+
+/* ════════════════════════════════════════════════════════════
+   UTILS
+════════════════════════════════════════════════════════════ */
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* ════════════════════════════════════════════════════════════
+   BOOT
+════════════════════════════════════════════════════════════ */
+checkAuth();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mfv-webapp",
+      "runtimeExecutable": "/Users/duwanshu/Desktop/xiaohongshu-skills-main/.venv/bin/python",
+      "runtimeArgs": ["/Users/duwanshu/Desktop/xiaohongshu-skills-main/webapp/server.py"],
+      "port": 5173
+    }
+  ]
+}

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MFV 系统架构图</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", sans-serif; background: #f5f5f7; color: #1d1d1f; font-size: 13px; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #1d1d1f; }
+  .subtitle { color: #6e6e73; font-size: 13px; margin-bottom: 28px; }
+  .section { margin-bottom: 32px; }
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6e6e73; margin-bottom: 10px; }
+
+  /* ── Grid layouts ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* ── Card ── */
+  .card { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .card-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+
+  /* ── Flow diagram ── */
+  .flow { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding-bottom: 4px; }
+  .flow-box { background: white; border-radius: 10px; padding: 10px 14px; min-width: 110px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); flex-shrink: 0; }
+  .flow-box .label { font-size: 11px; color: #6e6e73; margin-bottom: 3px; }
+  .flow-box .title { font-size: 12px; font-weight: 700; }
+  .flow-box.accent { background: #7c3aed; color: white; }
+  .flow-box.accent .label { color: rgba(255,255,255,0.7); }
+  .flow-box.green { background: #22c55e; color: white; }
+  .flow-box.green .label { color: rgba(255,255,255,0.7); }
+  .flow-box.red { background: #ef4444; color: white; }
+  .flow-box.red .label { color: rgba(255,255,255,0.7); }
+  .flow-box.orange { background: #f59e0b; color: white; }
+  .flow-box.blue { background: #3b82f6; color: white; }
+  .flow-box.blue .label { color: rgba(255,255,255,0.7); }
+  .arrow { display: flex; align-items: center; padding: 0 4px; color: #9ca3af; font-size: 16px; flex-shrink: 0; align-self: center; }
+
+  /* ── Tag ── */
+  .tag { display: inline-block; background: #f0f0f5; border-radius: 6px; padding: 2px 8px; font-size: 11px; margin: 2px; color: #374151; }
+  .tag.purple { background: #ede9fe; color: #7c3aed; }
+  .tag.green { background: #dcfce7; color: #166534; }
+  .tag.red { background: #fee2e2; color: #991b1b; }
+  .tag.blue { background: #dbeafe; color: #1d4ed8; }
+  .tag.orange { background: #fef3c7; color: #92400e; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: #f5f5f7; padding: 8px 10px; text-align: left; font-weight: 600; color: #6e6e73; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f0f0f5; vertical-align: top; line-height: 1.5; }
+  tr:last-child td { border-bottom: none; }
+  td .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+  .dot-now { background: #22c55e; }
+  .dot-next { background: #f59e0b; }
+  .dot-later { background: #9ca3af; }
+
+  /* ── Loop diagram ── */
+  .loop-wrap { position: relative; }
+  .loop-row { display: flex; align-items: stretch; gap: 0; }
+  .loop-item { background: white; border-radius: 10px; padding: 10px 12px; flex: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center; }
+  .loop-item .em { font-size: 18px; margin-bottom: 4px; }
+  .loop-item .t { font-size: 11px; font-weight: 700; }
+  .loop-item .d { font-size: 10px; color: #6e6e73; margin-top: 2px; }
+  .loop-arrow { display: flex; align-items: center; color: #9ca3af; padding: 0 6px; font-size: 20px; }
+
+  /* ── Pill header ── */
+  .pill-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .pill { background: #7c3aed; color: white; border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 700; }
+  .pill.green { background: #22c55e; }
+  .pill.blue { background: #3b82f6; }
+
+  /* divider */
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+
+  /* signal box */
+  .signal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .signal-box { background: white; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .signal-box .icon { font-size: 20px; margin-bottom: 6px; }
+  .signal-box .st { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+  .signal-box .sd { font-size: 10px; color: #6e6e73; line-height: 1.4; }
+
+  /* layer */
+  .layer-stack { display: flex; flex-direction: column; gap: 8px; }
+  .layer { display: flex; align-items: flex-start; gap: 12px; background: white; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .layer-badge { min-width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: white; flex-shrink: 0; }
+  .layer-content .lt { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+  .layer-content .ld { font-size: 11px; color: #6e6e73; line-height: 1.5; }
+  .layer-content .le { font-size: 11px; color: #374151; margin-top: 4px; font-style: italic; }
+
+  /* matrix */
+  .matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .matrix-cell { background: white; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .mc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .mc-icon { font-size: 16px; }
+  .mc-title { font-size: 12px; font-weight: 700; }
+  .mc-items { list-style: none; }
+  .mc-items li { font-size: 11px; color: #374151; padding: 3px 0; border-bottom: 1px solid #f5f5f7; line-height: 1.4; }
+  .mc-items li:last-child { border-bottom: none; }
+  .mc-items li::before { content: "·  "; color: #9ca3af; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>MFV Deal Flow · 系统架构全图</h1>
+  <p class="subtitle">用户个性化引擎 × 管理员投资智能 · 以下为现阶段完整设计</p>
+
+  <!-- ════════════════════════════════ PART 1 ════════════════════════════════ -->
+  <div class="section">
+    <div class="pill-header">
+      <div class="pill">① 用户个性化引擎</div>
+      <span style="font-size:12px;color:#6e6e73">注册数据 → 实时影响搜索·评分·卡片·复活</span>
+    </div>
+
+    <!-- 注册数据两步 -->
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="card">
+        <div class="card-title">Step 3 · 关注赛道（最多5个）</div>
+        <div style="margin-bottom:8px">
+          <span class="tag purple">Layer A：XHS搜索关键词</span>
+          <span class="tag purple">Layer B：语义过滤词</span>
+        </div>
+        <div class="layer-stack">
+          <div class="layer">
+            <div class="layer-badge" style="background:#7c3aed">A</div>
+            <div class="layer-content">
+              <div class="lt">平台搜索关键词</div>
+              <div class="ld">每个细分赛道 → 2-4个中文搜索词，驱动 search-feeds 查询</div>
+              <div class="le">「AI原生应用」→ AI应用 / AI产品 / AI工具创业</div>
+            </div>
+          </div>
+          <div class="layer">
+            <div class="layer-badge" style="background:#3b82f6">B</div>
+            <div class="layer-content">
+              <div class="lt">内容语义过滤</div>
+              <div class="ld">帖子摘要命中词 + 排除词，在抓取后二次筛选</div>
+              <div class="le">「游戏」→ 命中=[游戏,玩法] 排除=[攻略,外挂,代练]</div>
+            </div>
+          </div>
+          <div class="layer">
+            <div class="layer-badge" style="background:#f59e0b">C</div>
+            <div class="layer-content">
+              <div class="lt">评分维度权重偏移</div>
+              <div class="ld">不同赛道对 Origin / Amplification / Gravity 的权重不同</div>
+              <div class="le">「硬科技」→ Origin↑ Gravity↓ &nbsp;|&nbsp; 「消费娱乐」→ Gravity↑</div>
+            </div>
+          </div>
+          <div class="layer">
+            <div class="layer-badge" style="background:#ef4444">D</div>
+            <div class="layer-content">
+              <div class="lt">🆕 时效性过滤</div>
+              <div class="ld">赛道决定"窗口期"长短。硬科技可宽容更长的帖龄；消费内容严格限7天</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Step 4 · Rubric（三类Benchmark）</div>
+        <div style="margin-bottom:8px">
+          <span class="tag red">排除条件 → 硬过滤</span>
+          <span class="tag orange">偏好权重 → 卡片+评分</span>
+          <span class="tag blue">现实性检验 → 通过门槛</span>
+        </div>
+        <div class="layer-stack">
+          <div class="layer">
+            <div class="layer-badge" style="background:#ef4444">排</div>
+            <div class="layer-content">
+              <div class="lt">硬过滤（卡片不展示）</div>
+              <div class="ld">排除条件不满足 → 直接不进入用户的feed，不消耗配额</div>
+              <div class="le">复活逻辑触发点之一</div>
+            </div>
+          </div>
+          <div class="layer">
+            <div class="layer-badge" style="background:#f59e0b">权</div>
+            <div class="layer-content">
+              <div class="lt">卡片显示维度 + 评分权重</div>
+              <div class="ld">用户填的「偏好权重」top 3 → 卡片显示那3个分数。1/5锚点 → 归一化评分</div>
+              <div class="le">Tina的卡片显示【创意-管线-引力】，新用户显示其top 3</div>
+            </div>
+          </div>
+          <div class="layer">
+            <div class="layer-badge" style="background:#3b82f6">验</div>
+            <div class="layer-content">
+              <div class="lt">现实性检验 → 通过/观察标记</div>
+              <div class="ld">AI对帖子逐条回答这些问题 → 给出「值得投」vs「值得观察」标签</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 行为反馈循环 -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">行为反馈循环（Swipe → 影响下次推送）</div>
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:280px">
+          <div class="loop-row">
+            <div class="loop-item" style="background:#f0fdf4;border:1.5px solid #22c55e">
+              <div class="em">👍</div>
+              <div class="t">通过</div>
+              <div class="d">右滑 / Pass</div>
+            </div>
+            <div class="loop-arrow">→</div>
+            <div class="loop-item">
+              <div class="em">📈</div>
+              <div class="t">正向强化</div>
+              <div class="d">该赛道关键词权重↑<br>类似帖子特征标记</div>
+            </div>
+          </div>
+          <div style="height:10px"></div>
+          <div class="loop-row">
+            <div class="loop-item" style="background:#fef2f2;border:1.5px solid #ef4444">
+              <div class="em">👎</div>
+              <div class="t">拒绝</div>
+              <div class="d">左滑 + 理由</div>
+            </div>
+            <div class="loop-arrow">→</div>
+            <div class="loop-item">
+              <div class="em">🧹</div>
+              <div class="t">负向过滤</div>
+              <div class="d">理由文本→NLP→<br>Layer B排除词↑</div>
+            </div>
+          </div>
+          <div style="height:10px"></div>
+          <div class="loop-row">
+            <div class="loop-item" style="background:#fffbeb;border:1.5px solid #f59e0b">
+              <div class="em">⏱️</div>
+              <div class="t">阅读时长</div>
+              <div class="d">停留>30s</div>
+            </div>
+            <div class="loop-arrow">→</div>
+            <div class="loop-item">
+              <div class="em">🔍</div>
+              <div class="t">兴趣信号</div>
+              <div class="d">即使最终拒绝<br>也有软性权重↑</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:260px">
+          <div class="card" style="background:#f5f0ff;border:1.5px solid #7c3aed;padding:14px">
+            <div class="card-title" style="color:#7c3aed">🔄 复活逻辑（Revival）</div>
+            <table>
+              <tr><td style="padding:4px 0;font-size:11px;border:none"><b>触发条件：</b>该公司有新小红书帖子</td></tr>
+              <tr><td style="padding:4px 0;font-size:11px;border:none"><b>Check 1：</b>是否现在满足所有「排除条件」？</td></tr>
+              <tr><td style="padding:4px 0;font-size:11px;border:none"><b>Check 2：</b>当前帖子内容是否还命中拒绝理由关键词？</td></tr>
+              <tr><td style="padding:4px 0;font-size:11px;border:none"><b>通过 → 重新入队</b>，标记「♻️ 起死回生」</td></tr>
+              <tr><td style="padding:4px 0;font-size:11px;border:none;color:#7c3aed"><b>🆕 增加：</b>距上次拒绝>N天（冷却期）才可复活</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- ════════════════════════════════ PART 2 ════════════════════════════════ -->
+  <div class="section">
+    <div class="pill-header">
+      <div class="pill green">② 管理员投资智能（仅Tina）</div>
+      <span style="font-size:12px;color:#6e6e73">第一性原理：提升 Tina 作为投资经理的项目判断力</span>
+    </div>
+
+    <p style="font-size:12px;color:#374151;margin-bottom:14px;line-height:1.7">
+      「投资判断力」= <b>自我校准</b>（我的criteria和实际决策一致吗？）+ <b>市场感知</b>（我看到了哪里，漏掉了哪里？）+ <b>团队智慧</b>（其他分析师的判断有什么我没注意到的模式？）
+    </p>
+
+    <!-- 四象限数据价值 -->
+    <div class="matrix" style="margin-bottom:14px">
+      <div class="matrix-cell">
+        <div class="mc-header"><span class="mc-icon">🪞</span><span class="mc-title">自我校准数据（Tina自己）</span></div>
+        <ul class="mc-items">
+          <li>Rubric设定 vs 实际swipe决策的一致性比率</li>
+          <li>偏好权重 vs 实际通过项目的分布（我说我重视XX但真的吗？）</li>
+          <li>DM话术：原版 vs 修改版 diff（改了什么？为什么？）</li>
+          <li>通过率随时间变化趋势（标准越来越严/松？）</li>
+          <li>决策速度 vs 决策质量关联（快决策的项目后来怎样？）</li>
+        </ul>
+      </div>
+      <div class="matrix-cell">
+        <div class="mc-header"><span class="mc-icon">🌐</span><span class="mc-title">市场感知数据（跨所有用户）</span></div>
+        <ul class="mc-items">
+          <li>被多个用户同时通过的项目 → 强共识信号</li>
+          <li>被Tina拒绝但其他人通过的项目 → 盲点预警</li>
+          <li>赛道热度趋势（哪个赛道这周推送量↑？）</li>
+          <li>项目复活成功率（复活的项目最终pass率？）</li>
+          <li>各赛道的平均通过率（哪个赛道最难过？）</li>
+        </ul>
+      </div>
+      <div class="matrix-cell">
+        <div class="mc-header"><span class="mc-icon">👥</span><span class="mc-title">团队洞察数据（分析师/其他用户）</span></div>
+        <ul class="mc-items">
+          <li>每位分析师的通过率 + 偏好赛道</li>
+          <li>同一项目不同人的评分差异（分歧案例 → 高价值讨论素材）</li>
+          <li>拒绝理由词频分布（团队共同的排除逻辑是什么？）</li>
+          <li>分析师之间的判断相关性矩阵</li>
+          <li>新用户rubric与Tina rubric的差异度</li>
+        </ul>
+      </div>
+      <div class="matrix-cell">
+        <div class="mc-header"><span class="mc-icon">🔧</span><span class="mc-title">产品优化数据（PM视角）</span></div>
+        <ul class="mc-items">
+          <li>注册各步骤完成率（Step 4 skip率多高？）</li>
+          <li>用户session频率（多少天开一次app？）</li>
+          <li>每次session滑了几张卡？</li>
+          <li>DM发送率（通过的项目有多少最终发出DM？）</li>
+          <li>复活功能使用频率</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 数据埋点清单 -->
+    <div class="card">
+      <div class="card-title">需要增加的数据埋点（现在没有但必须加）</div>
+      <div class="signal-grid">
+        <div class="signal-box">
+          <div class="icon">⏱️</div>
+          <div class="st">卡片停留时长</div>
+          <div class="sd">从展示到决策的秒数。区分「快速直觉拒绝」和「犹豫后拒绝」</div>
+        </div>
+        <div class="signal-box">
+          <div class="icon">✏️</div>
+          <div class="st">DM修改记录</div>
+          <div class="sd">原始模板 + 最终发送版本 diff。反映Tina的真实表达偏好</div>
+        </div>
+        <div class="signal-box">
+          <div class="icon">🔄</div>
+          <div class="st">Rubric更新历史</div>
+          <div class="sd">用户每次改标准时保存快照。看标准如何随经验演化</div>
+        </div>
+        <div class="signal-box">
+          <div class="icon">📍</div>
+          <div class="st">项目通过后追踪</div>
+          <div class="sd">Pass后是否发DM → DM是否有回复（未来接入）→ 是否进入pipeline</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ════════════════════════════════ PART 3 ════════════════════════════════ -->
+  <div class="section">
+    <div class="pill-header">
+      <div class="pill blue">③ 现在要做什么</div>
+      <span style="font-size:12px;color:#6e6e73">按优先级排序</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>优先级</th>
+          <th>功能</th>
+          <th>影响</th>
+          <th>依赖</th>
+          <th>属于</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="dot dot-now"></span>P0 现在</td>
+          <td><b>卡片显示维度个性化</b><br><span style="color:#6e6e73">用用户rubric的top3偏好权重替代硬编码的创意-管线-引力</span></td>
+          <td>每个用户看到自己关心的维度</td>
+          <td>Step 4已有数据</td>
+          <td>①用户</td>
+        </tr>
+        <tr>
+          <td><span class="dot dot-now"></span>P0 现在</td>
+          <td><b>排除条件作为硬过滤</b><br><span style="color:#6e6e73">在feed装载时就过滤，不进入卡片队列</span></td>
+          <td>大幅减少用户看到"显然不符合"的内容</td>
+          <td>Step 4已有数据</td>
+          <td>①用户</td>
+        </tr>
+        <tr>
+          <td><span class="dot dot-now"></span>P0 现在</td>
+          <td><b>卡片停留时长埋点</b><br><span style="color:#6e6e73">记录展示时间戳 → 决策时间戳</span></td>
+          <td>解锁未来所有行为分析</td>
+          <td>无</td>
+          <td>②管理员</td>
+        </tr>
+        <tr>
+          <td><span class="dot dot-next"></span>P1 下一步</td>
+          <td><b>赛道→关键词映射表</b><br><span style="color:#6e6e73">写死Layer A/B/C/D的映射，驱动个性化搜索</span></td>
+          <td>真正实现"你关注什么就推什么"</td>
+          <td>Step 3已有数据</td>
+          <td>①用户</td>
+        </tr>
+        <tr>
+          <td><span class="dot dot-next"></span>P1 下一步</td>
+          <td><b>管理员仪表盘 v1</b><br><span style="color:#6e6e73">用户列表 + 基础行为数据表格</span></td>
+          <td>Tina开始看到团队数据</td>
+          <td>埋点数据积累</td>
+          <td>②管理员</td>
+        </tr>
+        <tr>
+          <td><span class="dot dot-next"></span>P1 下一步</td>
+          <td><b>拒绝理由→Layer B反馈</b><br><span style="color:#6e6e73">周期性把拒绝理由NLP成排除词更新搜索</span></td>
+          <td>系统越用越精准</td>
+          <td>拒绝理由已有数据</td>
+          <td>①用户</td>
+        </tr>
+        <tr>
+          <td><span class="dot dot-later"></span>P2 之后</td>
+          <td><b>复活逻辑</b><br><span style="color:#6e6e73">Check1(排除条件)+Check2(拒绝理由)+冷却期</span></td>
+          <td>不错过反转的项目</td>
+          <td>公司历史记录</td>
+          <td>①用户</td>
+        </tr>
+        <tr>
+          <td><span class="dot dot-later"></span>P2 之后</td>
+          <td><b>自我校准报告</b><br><span style="color:#6e6e73">Rubric设定 vs 实际决策的一致性分析</span></td>
+          <td>Tina的核心价值功能</td>
+          <td>足够的历史swipe数据</td>
+          <td>②管理员</td>
+        </tr>
+        <tr>
+          <td><span class="dot dot-later"></span>P2 之后</td>
+          <td><b>DM修改记录 + diff分析</b></td>
+          <td>挖掘真实表达偏好</td>
+          <td>DM发送功能完善后</td>
+          <td>②管理员</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>
