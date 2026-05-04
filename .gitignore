@@ -11,8 +11,9 @@ webapp/.env
 /tmp/mfv-webapp.log
 # Build artifacts / temp
 *.zip
-".venv 2"/
-.venv 2/
+.venv*
+# macOS
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
