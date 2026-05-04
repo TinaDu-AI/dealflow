@@ -1,11 +1,64 @@
-# xiaohongshu-skills
+# MFV Deal Flow（基于 xiaohongshu-skills）
 
-小红书自动化 Claude Code Skills，使用用户的真实浏览器和账号信息操作小红书。
+小红书 AI 创业项目筛选工具。在用户真实浏览器中操作小红书，结合 LLM 评分帮助投资人发现优质标的。
 
-## Git 工作流
+---
 
-- 所有代码修改必须在分支上进行，禁止直接推送 main 分支
-- 分支开发完成后通过 PR 合入 main
+## 🗂 双仓库结构（重要）
+
+本机有两份目录，**只在 internal 里开发**，永不直接编辑 public：
+
+```
+~/Desktop/
+├── xiaohongshu-skills-main/         ← internal 开发版（有 .env、mfv.db、真实数据）
+│   ├── dev 分支    = 开发中
+│   └── main 分支   = 内部验收
+│
+└── xiaohongshu-skills-public/       ← public GitHub 镜像（脱敏，git@github.com:TinaDu-AI/dealflow.git）
+    └── main 分支   = 公开验收
+```
+
+**同步流程：** `internal/dev` → 合并到 `internal/main` → 跑 `./sync-public.sh "说明"` → 自动剔除敏感文件 → 推到 GitHub。
+
+---
+
+## 📋 三份状态文档（每次开发后必须更新）
+
+- `MFV-Deal-Flow-开发状态.md` — 描述 dev 分支当前在改什么、还有什么没改完
+- `MFV-Deal-Flow-验收状态.md` — 描述 main 分支当前稳定功能（合并到 main 时同步更新）
+- `MFV-Deal-Flow-需求看板.md` — 所有需求/Bug 留痕（"版本腐烂"防护）
+
+> 少云原话："版本腐烂绝对不允许 — 所有需求都要提单留痕"
+
+---
+
+## ✅ 提交约定（每完成一项功能必须走完）
+
+1. 改完代码 → `git commit` + `git push`
+2. **更新 `MFV-Deal-Flow-开发状态.md`**：在变更日志写一句"这次改了啥"
+3. 如果是修 Bug 或完成需求 → 移到 `MFV-Deal-Flow-需求看板.md` 的"已完成"区，填 commit hash
+4. 重大节点 → 切到 main 分支 merge dev → 更新 `MFV-Deal-Flow-验收状态.md` → 跑 `./sync-public.sh`
+
+---
+
+## 🧪 实验规范（涉及 LLM 的修改必须遵守）
+
+参考少云方法论：
+
+1. **禁止重写**：实验过程**严禁**为了实验重写生产函数，必须直接调用生产代码
+2. **控制变量法**：每次实验只改一个变量（prompt / 模型 / 参数三选一），其余保持不变
+3. **结果可视化、可回溯**：实验脚本放在 `experiments/<编号>-<主题>/`，输出 `report.html` 或 `results.json`
+4. **新旧对比**：每次实验产出"优化前 vs 优化后"的对比报告，写入 `experiments/README.md` 索引
+
+---
+
+## Git 分支约定
+
+- `main` = 验收版（不直接提交，只接受 dev merge）
+- `dev` = 默认开发分支
+- `feature/xxx` = 大功能（开新分支，最后合 dev）
+- `fix/xxx` = 修 Bug
+- `exp/xxx` = 实验性改动（可能丢弃）
 
 ## 开发命令
 
