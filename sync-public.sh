@@ -29,14 +29,12 @@ echo "📂 public:   $PUBLIC"
 echo ""
 
 # rsync 同步，剔除敏感文件和无关目录
-rsync -av --delete \
+# --no-links: 不复制 symlink（iCloud 会创建 .venv 2 → .venv.nosync 这种链接）
+rsync -av --delete --no-links \
   --exclude=".git/" \
-  --exclude=".venv/" \
-  --exclude=".venv 2/" \
+  --exclude=".venv*" \
   --exclude="webapp/.env" \
-  --exclude="webapp/mfv.db" \
-  --exclude="webapp/mfv.db-shm" \
-  --exclude="webapp/mfv.db-wal" \
+  --exclude="webapp/mfv.db*" \
   --exclude="webapp/logs/" \
   --exclude=".claude/settings.local.json" \
   --exclude="__pycache__/" \
