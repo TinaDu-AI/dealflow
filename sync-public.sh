@@ -42,6 +42,12 @@ rsync -av --delete --no-links \
   --exclude=".DS_Store" \
   --exclude="*.zip" \
   --exclude="MFV-Deal-Flow-开发状态.md" \
+  --exclude="MFV-Deal-Flow-需求看板.md" \
+  --exclude="MFV-Deal-Flow-决策档案-0-早期对话-*.md" \
+  --exclude="MFV-Deal-Flow-决策档案-1-*.md" \
+  --exclude="MFV-Deal-Flow-决策档案-2-*.md" \
+  --exclude="CLAUDE.md" \
+  --exclude=".vscode/" \
   "$INTERNAL/" "$PUBLIC/"
 
 echo ""

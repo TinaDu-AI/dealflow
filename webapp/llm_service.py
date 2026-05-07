@@ -31,8 +31,18 @@ ENABLED = bool(DASHSCOPE_API_KEY)
 
 # ── core Qwen caller ───────────────────────────────────────────────────────────
 
-def _call_qwen(prompt: str, system: str = "", max_tokens: int = 400) -> str:
-    """Call Qwen and return raw text. Returns '' on any error."""
+def _call_qwen(
+    prompt: str,
+    system: str = "",
+    max_tokens: int = 400,
+    model: str | None = None,
+    temperature: float = 0.1,
+) -> str:
+    """Call Qwen and return raw text. Returns '' on any error.
+
+    实验环境可通过 model/temperature 参数覆盖默认值；生产代码不传这些参数，
+    行为与之前完全一致。
+    """
     if not ENABLED:
         return ""
     try:
@@ -43,7 +53,10 @@ def _call_qwen(prompt: str, system: str = "", max_tokens: int = 400) -> str:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         resp = client.chat.completions.create(
-            model=MODEL, messages=messages, temperature=0.1, max_tokens=max_tokens,
+            model=model or MODEL,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
         return resp.choices[0].message.content.strip()
     except Exception as e:
@@ -245,6 +258,11 @@ def score_company_rubric(
     scoring_items: list[dict],
     viability_items: list[dict],
     institution_name: str = "MFV",
+    *,
+    model: str | None = None,
+    temperature: float = 0.1,
+    system_template: str | None = None,
+    prompt_template: str | None = None,
 ) -> dict:
     """
     Score a company against the user's rubric.
@@ -300,7 +318,9 @@ def score_company_rubric(
     v_entries = ", ".join(f'"v{i+1}": "答案"' for i in range(len(v_lines)))
     json_template = "{" + dim_entries + (", " + v_entries if v_entries else "") + "}"
 
-    prompt = _SCORE_PROMPT_TMPL.format(
+    prompt_tmpl = prompt_template if prompt_template is not None else _SCORE_PROMPT_TMPL
+    sys_tmpl = system_template if system_template is not None else _SCORE_SYSTEM_TMPL
+    prompt = prompt_tmpl.format(
         name=company.get("name", ""),
         summary=company.get("summary", ""),
         type=company.get("type", ""),
@@ -309,8 +329,8 @@ def score_company_rubric(
         viability_block=viability_block,
         json_template=json_template,
     )
-    system = _SCORE_SYSTEM_TMPL.format(institution=institution_name)
-    raw = _call_qwen(prompt, system, max_tokens=600)
+    system = sys_tmpl.format(institution=institution_name)
+    raw = _call_qwen(prompt, system, max_tokens=600, model=model, temperature=temperature)
     if not raw:
         return _empty
 

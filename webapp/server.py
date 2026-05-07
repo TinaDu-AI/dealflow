@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -252,6 +253,7 @@ def api_swipe():
     direction = data.get("direction")
     note = data.get("note", "")
     dm_text = data.get("dm_text", "")
+    dm_original = data.get("dm_original") or None
     if not company_id or direction not in ("left", "right"):
         return jsonify({"error": "invalid payload"}), 400
     user = get_current_user()
@@ -261,7 +263,8 @@ def api_swipe():
     # P2: record current scan round at rejection so revival can count 3 rounds later
     rejected_at_scan = db.get_scan_count(user_id) if user_id and direction == "left" else None
     swipe_id = db.record_swipe(
-        company_id, direction, note, dm_text, user_id, shown_at, decided_at, rejected_at_scan
+        company_id, direction, note, dm_text, user_id, shown_at, decided_at, rejected_at_scan,
+        dm_original=dm_original,
     )
 
     company = db.get_company(company_id) or {}
@@ -442,6 +445,245 @@ def api_batch_import_jobs():
     if err:
         return err
     return jsonify(batch_import.list_jobs())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# DASHBOARD (admin only) — pipeline-wide data view + feedback collection
+# ──────────────────────────────────────────────────────────────────────────────
+
+import json as _json
+from datetime import datetime
+
+
+def _enrich_company(c: dict, swipes_by_cid: dict, feedback_by_cid: dict) -> dict:
+    """Attach swipe + feedback + derived fields to a company row."""
+    cid = c["id"]
+    sw = swipes_by_cid.get(cid)  # most recent swipe by anyone
+    fbs = feedback_by_cid.get(cid, [])
+
+    # Derived: dwell time
+    dwell = None
+    if sw and sw.get("shown_at") and sw.get("decided_at"):
+        try:
+            from datetime import datetime as _dt
+            t0 = _dt.fromisoformat(sw["shown_at"].replace("Z", "+00:00"))
+            t1 = _dt.fromisoformat(sw["decided_at"].replace("Z", "+00:00"))
+            dwell = round((t1 - t0).total_seconds(), 1)
+        except Exception:
+            pass
+
+    # Derived: dm modified?
+    dm_status = None
+    if sw and sw.get("direction") == "right":
+        orig = (sw.get("dm_original") or "").strip()
+        sent = (sw.get("dm_text") or "").strip()
+        if not orig and not sent:
+            dm_status = "未生成"
+        elif not sent:
+            dm_status = "未生成"
+        elif not orig or orig == sent:
+            dm_status = "原版直发"
+        else:
+            dm_status = f"已修改 ({len(sent)}字)"
+
+    # Derived: rejection class label (中文)
+    rclass_label = None
+    rt = sw.get("rejection_type") if sw else None
+    if rt == "A":
+        rclass_label = "类型不感兴趣"
+    elif rt == "B1":
+        rclass_label = "评分维度不达标"
+    elif rt == "B2":
+        rclass_label = "其他偏好"
+
+    # Parse interact_data JSON
+    interact = None
+    if c.get("interact_data"):
+        try:
+            interact = _json.loads(c["interact_data"])
+        except Exception:
+            interact = None
+
+    return {
+        **c,
+        "swipe": sw,
+        "dwell_seconds": dwell,
+        "dm_status": dm_status,
+        "rejection_class_label": rclass_label,
+        "interact": interact,
+        "feedback": fbs,
+    }
+
+
+@app.route("/api/admin/dashboard/companies")
+def api_dashboard_companies():
+    user, err = require_admin()
+    if err:
+        return err
+    with db.get_conn() as conn:
+        companies = [dict(r) for r in conn.execute(
+            "SELECT * FROM companies ORDER BY id DESC"
+        ).fetchall()]
+        # Most recent swipe per company (joined with classifier fields)
+        swipe_rows = conn.execute("""
+            SELECT s.* FROM swipes s
+            INNER JOIN (
+                SELECT company_id, MAX(id) AS max_id
+                FROM swipes GROUP BY company_id
+            ) m ON s.id = m.max_id
+        """).fetchall()
+        swipes_by_cid = {r["company_id"]: dict(r) for r in swipe_rows}
+        fb_rows = conn.execute("SELECT * FROM feedback ORDER BY created_at DESC").fetchall()
+        feedback_by_cid: dict[int, list[dict]] = {}
+        for r in fb_rows:
+            feedback_by_cid.setdefault(r["company_id"], []).append(dict(r))
+
+    enriched = [_enrich_company(c, swipes_by_cid, feedback_by_cid) for c in companies]
+
+    # KPIs
+    total = len(companies)
+    swiped = sum(1 for c in enriched if c["swipe"])
+    right = sum(1 for c in enriched if c["swipe"] and c["swipe"]["direction"] == "right")
+    left = sum(1 for c in enriched if c["swipe"] and c["swipe"]["direction"] == "left")
+    left_with_note = sum(
+        1 for c in enriched
+        if c["swipe"] and c["swipe"]["direction"] == "left" and (c["swipe"].get("note") or "").strip()
+    )
+    scored = sum(1 for c in enriched if c.get("score_origin") is not None)
+    feedback_count = sum(len(c["feedback"]) for c in enriched)
+
+    return jsonify({
+        "kpi": {
+            "total": total, "scored": scored, "swiped": swiped,
+            "right": right, "left": left, "left_with_note": left_with_note,
+            "feedback_count": feedback_count,
+            # Targets for "ready for experiment"
+            "target_swipes": 50, "target_left_with_note": 20,
+        },
+        "companies": enriched,
+    })
+
+
+@app.route("/api/admin/dashboard/feedback", methods=["POST"])
+def api_dashboard_feedback():
+    user, err = require_admin()
+    if err:
+        return err
+    data = request.get_json(force=True)
+    company_id = data.get("company_id")
+    stage = data.get("stage")
+    if not company_id or stage not in ("ingest", "extract", "score", "rank", "classify"):
+        return jsonify({"error": "invalid payload"}), 400
+    fb_id = db.save_feedback(
+        company_id=company_id,
+        stage=stage,
+        verdict=data.get("verdict"),
+        ground_truth=data.get("ground_truth"),
+        note=data.get("note"),
+        user_id=user["id"],
+    )
+    return jsonify({"ok": True, "id": fb_id})
+
+
+@app.route("/api/admin/dashboard/feedback/<int:company_id>")
+def api_dashboard_feedback_get(company_id: int):
+    user, err = require_admin()
+    if err:
+        return err
+    return jsonify(db.get_feedback_for_company(company_id))
+
+
+@app.route("/api/admin/dashboard/export-markdown")
+def api_dashboard_export_md():
+    """Return current dashboard data as a Notion-paste-ready markdown table."""
+    user, err = require_admin()
+    if err:
+        return err
+    # Reuse the same enrichment as /companies
+    with db.get_conn() as conn:
+        companies = [dict(r) for r in conn.execute(
+            "SELECT * FROM companies ORDER BY id DESC"
+        ).fetchall()]
+        swipe_rows = conn.execute("""
+            SELECT s.* FROM swipes s
+            INNER JOIN (
+                SELECT company_id, MAX(id) AS max_id
+                FROM swipes GROUP BY company_id
+            ) m ON s.id = m.max_id
+        """).fetchall()
+        swipes_by_cid = {r["company_id"]: dict(r) for r in swipe_rows}
+        fb_rows = conn.execute("SELECT * FROM feedback").fetchall()
+        feedback_by_cid: dict[int, list[dict]] = {}
+        for r in fb_rows:
+            feedback_by_cid.setdefault(r["company_id"], []).append(dict(r))
+
+    enriched = [_enrich_company(c, swipes_by_cid, feedback_by_cid) for c in companies]
+
+    lines = [
+        f"# MFV Deal Flow — 抓取数据看板（{datetime.now().strftime('%Y-%m-%d %H:%M')}）",
+        "",
+        "| # | 项目 | 账号 | 类型 | 关键词 | 评分 | 推送 | Swipe | 停留 | 拒绝分类 | 备注 | 话术状态 | 反馈条数 | URL |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for c in enriched:
+        sw = c.get("swipe") or {}
+        score = (
+            f"{c['score_origin']}·{c['score_amplification'] or '?'}·{c['score_gravity'] or '?'}"
+            if c.get("score_origin") is not None else "—"
+        )
+        swipe_str = "👉" if sw.get("direction") == "right" else ("👈" if sw.get("direction") == "left" else "—")
+        push_str = "进过 feed" if sw else "—"
+        dwell = f"{c['dwell_seconds']}s" if c.get("dwell_seconds") is not None else "—"
+        rclass = c.get("rejection_class_label") or "—"
+        note = (sw.get("note") or "").replace("|", "/").replace("\n", " ")[:40]
+        url_short = (c.get("xhs_url") or "").replace("|", "")
+        lines.append(
+            f"| {c['id']} | {c.get('name','')} | @{c.get('account','')} | {c.get('type','')} "
+            f"| {c.get('search_keyword') or '—'} | {score} | {push_str} | {swipe_str} | {dwell} "
+            f"| {rclass} | {note} | {c.get('dm_status') or '—'} | {len(c.get('feedback') or [])} "
+            f"| [开]({url_short}) |"
+        )
+    return jsonify({"markdown": "\n".join(lines)})
+
+
+@app.route("/api/admin/dashboard/export-notion", methods=["POST"])
+def api_dashboard_export_notion():
+    """Sync current dashboard data to the configured Notion page."""
+    user, err = require_admin()
+    if err:
+        return err
+    try:
+        import notion_sync
+    except ImportError as e:
+        return jsonify({"ok": False, "error": f"notion_sync import failed: {e}"}), 500
+    ok, msg, n = notion_sync.sync_from_db()
+    return jsonify({
+        "ok": ok,
+        "error": None if ok else msg,
+        "url": f"https://www.notion.so/{notion_sync.NOTION_PAGE_ID.replace('-','')}" if ok else None,
+        "rows_synced": n,
+    })
+
+
+@app.route("/api/admin/dashboard/cron-sync", methods=["POST"])
+def api_dashboard_cron_sync():
+    """Headless sync endpoint — auth via CRON_SECRET header, no session.
+
+    Used by launchd (curl call) to avoid spawning a Python process that would
+    hit iCloud file-lock deadlocks reading Desktop files.
+    """
+    expected = os.environ.get("CRON_SECRET", "")
+    if not expected:
+        return jsonify({"ok": False, "error": "CRON_SECRET not configured"}), 500
+    received = request.headers.get("X-Cron-Secret", "")
+    if not received or received != expected:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    try:
+        import notion_sync
+    except ImportError as e:
+        return jsonify({"ok": False, "error": f"notion_sync import failed: {e}"}), 500
+    ok, msg, n = notion_sync.sync_from_db()
+    return jsonify({"ok": ok, "msg": msg, "rows_synced": n})
 
 
 # ──────────────────────────────────────────────────────────────────────────────

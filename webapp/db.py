@@ -125,12 +125,34 @@ def init_db() -> None:
             "ALTER TABLE swipes ADD COLUMN rejected_at_scan INTEGER",
             # Custom keywords per user (JSON array stored as TEXT)
             "ALTER TABLE users ADD COLUMN custom_keywords TEXT DEFAULT '[]'",
+            # Dashboard / feedback collection (2026-05-07)
+            "ALTER TABLE companies ADD COLUMN search_keyword TEXT",
+            "ALTER TABLE companies ADD COLUMN interact_data TEXT",   # JSON
+            "ALTER TABLE swipes ADD COLUMN dm_original TEXT",
         ]
         for sql in migrations:
             try:
                 conn.execute(sql)
             except Exception:
                 pass
+
+        # Feedback table — ground truth signals for LLM tuning
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                stage TEXT NOT NULL,           -- ingest / extract / score / rank / classify
+                verdict TEXT,                  -- good / bad / fixed
+                ground_truth TEXT,             -- JSON: stage-specific corrections
+                note TEXT,
+                user_id INTEGER,
+                created_at TEXT,
+                FOREIGN KEY(company_id) REFERENCES companies(id),
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_company ON feedback(company_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_stage ON feedback(stage);")
 
     _seed_admin()
     init_rubric()
@@ -804,17 +826,22 @@ def upsert_company(data: dict) -> None:
             return
 
     with get_conn() as conn:
+        # Backward compat: callers without dashboard fields get None
+        data.setdefault("search_keyword", None)
+        data.setdefault("interact_data", None)
         conn.execute("""
             INSERT OR REPLACE INTO companies
                 (id, name, account, type, publish_date, one_liner, summary,
                  mfv_keywords, mfv_note, xhs_url, xhs_user_id, batch_date,
                  is_revival, previous_rejection,
-                 score_origin, score_amplification, score_gravity, viability_summary)
+                 score_origin, score_amplification, score_gravity, viability_summary,
+                 search_keyword, interact_data)
             VALUES
                 (:id, :name, :account, :type, :publish_date, :one_liner, :summary,
                  :mfv_keywords, :mfv_note, :xhs_url, :xhs_user_id, :batch_date,
                  :is_revival, :previous_rejection,
-                 :score_origin, :score_amplification, :score_gravity, :viability_summary)
+                 :score_origin, :score_amplification, :score_gravity, :viability_summary,
+                 :search_keyword, :interact_data)
         """, {
             **data,
             "is_revival": data.get("is_revival", 0),
@@ -839,16 +866,18 @@ def record_swipe(
     shown_at: str | None = None,
     decided_at: str | None = None,
     rejected_at_scan: int | None = None,
+    *,
+    dm_original: str | None = None,
 ) -> int:
     contact_status = "rejected" if direction == "left" else "pending"
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO swipes
                (company_id, direction, note, dm_text, contact_status, user_id,
-                shown_at, decided_at, rejected_at_scan)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                shown_at, decided_at, rejected_at_scan, dm_original)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (company_id, direction, note or "", dm_text or "", contact_status,
-             user_id, shown_at, decided_at, rejected_at_scan),
+             user_id, shown_at, decided_at, rejected_at_scan, dm_original),
         )
         return cur.lastrowid
 
@@ -991,4 +1020,47 @@ def get_history(user_id: int | None = None, is_admin: bool = False) -> list[dict
             {where}
             ORDER BY s.swiped_at DESC
         """, params).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ── Feedback (dashboard ground truth signals) ─────────────────────────────────
+
+def save_feedback(
+    company_id: int,
+    stage: str,
+    verdict: str | None = None,
+    ground_truth: dict | None = None,
+    note: str | None = None,
+    user_id: int | None = None,
+) -> int:
+    """Insert or replace feedback for (company_id, stage, user_id)."""
+    import json as _json
+    gt_str = _json.dumps(ground_truth, ensure_ascii=False) if ground_truth else None
+    with get_conn() as conn:
+        # Same user can override their previous feedback for the same stage
+        conn.execute(
+            "DELETE FROM feedback WHERE company_id=? AND stage=? AND COALESCE(user_id,-1)=COALESCE(?,-1)",
+            (company_id, stage, user_id),
+        )
+        cur = conn.execute(
+            """INSERT INTO feedback
+               (company_id, stage, verdict, ground_truth, note, user_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, datetime('now'))""",
+            (company_id, stage, verdict, gt_str, note, user_id),
+        )
+        return cur.lastrowid
+
+
+def get_feedback_for_company(company_id: int) -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM feedback WHERE company_id=? ORDER BY stage, created_at DESC",
+            (company_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_all_feedback() -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM feedback ORDER BY created_at DESC").fetchall()
         return [dict(r) for r in rows]

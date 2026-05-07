@@ -234,3 +234,6 @@ comment.txt
 
 # Ralph Loop state
 .claude/.ralph-loop.local.md
+
+# Editor
+.vscode/

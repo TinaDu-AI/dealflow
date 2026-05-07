@@ -2089,6 +2089,202 @@
       position: relative;
       z-index: 1;
     }
+
+    /* ── Dashboard (mobile-first) ── */
+    .dash-kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 10px 12px;
+      background: #fafafa;
+    }
+    .dash-kpi {
+      background: #fff;
+      border-radius: 10px;
+      padding: 8px 6px;
+      text-align: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .dash-kpi-num { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+    .dash-kpi-label { font-size: 10px; color: #999; margin-top: 2px; }
+    .dash-kpi-progress {
+      grid-column: 1 / -1;
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .dash-kpi-progress-label {
+      font-size: 11px; color: #666; margin-bottom: 4px;
+    }
+    .dash-kpi-progress-bar {
+      height: 6px; background: #eee; border-radius: 3px; overflow: hidden;
+    }
+    .dash-kpi-progress-fill {
+      height: 100%; background: linear-gradient(90deg, #ff6f6f, #ff9b6f);
+      transition: width 0.3s;
+    }
+
+    .dash-filter-bar {
+      display: flex;
+      gap: 6px;
+      padding: 8px 12px;
+      background: #fafafa;
+      border-bottom: 1px solid #eee;
+      flex-wrap: wrap;
+    }
+    .dash-filter-select, .dash-filter-text {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+      background: #fff;
+    }
+    .dash-filter-text { flex: 1; min-width: 120px; }
+
+    .dash-list { padding: 10px 12px 16px; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+    #screen-dashboard { overflow-x: hidden; }
+    .dash-card { word-break: break-word; }
+    .dash-empty {
+      text-align: center; color: #999; padding: 30px 0; font-size: 13px;
+    }
+    .dash-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      cursor: pointer;
+    }
+    .dash-card-row1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .dash-card-name {
+      font-weight: 600; font-size: 15px; color: #1a1a1a;
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .dash-card-id { color: #ccc; font-size: 11px; flex-shrink: 0; }
+    .dash-card-meta {
+      display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: #666;
+      margin-top: 4px;
+    }
+    .dash-card-meta span {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .dash-card-pills {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;
+    }
+    .dash-pill {
+      font-size: 11px; padding: 2px 8px; border-radius: 10px;
+      background: #f0f0f0; color: #555;
+    }
+    .dash-pill.right { background: #d4f4d4; color: #2a7a2a; }
+    .dash-pill.left  { background: #fadbd8; color: #b5564a; }
+    .dash-pill.score { background: #fff3cd; color: #856404; }
+    .dash-pill.fb    { background: #e1d5f5; color: #5b3b9a; }
+    .dash-pill.dm    { background: #d1ecf1; color: #0c5460; }
+    .dash-card-note {
+      font-size: 12px; color: #888; margin-top: 6px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* Drawer */
+    .dash-drawer {
+      position: fixed; inset: 0; z-index: 1000;
+    }
+    .dash-drawer-backdrop {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.4);
+    }
+    .dash-drawer-panel {
+      position: absolute; top: 0; right: 0; bottom: 0;
+      width: 100%; max-width: 540px;
+      background: #fafafa;
+      display: flex; flex-direction: column;
+      animation: slideInRight 0.25s ease;
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); }
+      to   { transform: translateX(0); }
+    }
+    .dash-drawer-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px; background: #fff;
+      border-bottom: 1px solid #eee;
+    }
+    .dash-drawer-title { font-weight: 600; flex: 1; }
+    .dash-drawer-body {
+      flex: 1; overflow-y: auto; padding: 12px;
+    }
+    .dash-stage {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .dash-stage-title {
+      font-weight: 600; font-size: 13px;
+      margin-bottom: 8px; color: #444;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .dash-stage-body {
+      font-size: 13px; color: #333; line-height: 1.5;
+    }
+    .dash-stage-body .label { color: #999; font-size: 11px; }
+    .dash-stage-body .value { color: #1a1a1a; }
+    .dash-stage-body .field { margin-bottom: 6px; }
+    .dash-feedback-zone {
+      background: #f9f5ff;
+      border: 1px dashed #c8b6e8;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .dash-fb-label {
+      font-size: 11px; color: #5b3b9a; margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .dash-fb-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dash-fb-btn {
+      padding: 6px 12px; border-radius: 6px; border: 1px solid #ddd;
+      background: #fff; font-size: 12px; cursor: pointer;
+    }
+    .dash-fb-btn.active { background: #5b3b9a; color: #fff; border-color: #5b3b9a; }
+    .dash-fb-btn.good { border-color: #2a7a2a; color: #2a7a2a; }
+    .dash-fb-btn.good.active { background: #2a7a2a; color: #fff; }
+    .dash-fb-btn.bad { border-color: #b5564a; color: #b5564a; }
+    .dash-fb-btn.bad.active { background: #b5564a; color: #fff; }
+    .dash-fb-input {
+      width: 100%; padding: 6px 10px; border-radius: 6px;
+      border: 1px solid #ddd; font-size: 13px; box-sizing: border-box;
+      margin-top: 6px;
+    }
+    .dash-score-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+      margin-top: 6px;
+    }
+    .dash-score-cell { text-align: center; }
+    .dash-score-cell .label { font-size: 10px; color: #888; }
+    .dash-score-cell select {
+      width: 100%; padding: 4px; border-radius: 6px;
+      border: 1px solid #ddd; font-size: 13px;
+    }
+    .dash-fb-existing {
+      font-size: 11px; color: #5b3b9a;
+      background: #ede4f9; padding: 4px 8px; border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .dash-diff-block {
+      font-family: ui-monospace, monospace; font-size: 12px;
+      background: #f8f8f8; padding: 8px; border-radius: 6px;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .dash-diff-block del { background: #fadbd8; text-decoration: line-through; }
+    .dash-diff-block ins { background: #d4f4d4; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -2327,6 +2523,8 @@
       <div class="history-title">⚙️ 管理员</div>
     </div>
 
+    <div class="admin-scroll" style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:16px">
+
     <!-- Batch Import Card -->
     <div class="admin-card">
       <div class="admin-card-title">📥 批量导入公司</div>
@@ -2373,10 +2571,70 @@
       </div>
     </div>
 
+    <!-- Dashboard entry card -->
+    <div class="admin-card" style="margin-top:12px">
+      <div class="admin-card-title">📊 数据看板</div>
+      <div class="admin-card-desc">
+        查看所有抓取结果，给每条数据的 5 个流程节点打反馈，导出到 Notion。
+      </div>
+      <button class="admin-load-btn" onclick="showDashboard()">进入看板</button>
+    </div>
+
     <!-- User list card -->
     <div class="admin-card" style="margin-top:12px">
       <div class="admin-card-title">👥 用户列表</div>
       <div id="adminUserList"><button class="admin-load-btn" onclick="loadAdminUsers()">加载用户</button></div>
+    </div>
+
+    </div><!-- /.admin-scroll -->
+  </div>
+
+  <!-- ── DASHBOARD SCREEN (mobile-first) ── -->
+  <div id="screen-dashboard" class="screen">
+    <div class="history-header">
+      <button class="back-btn" onclick="showAdmin()">← 返回</button>
+      <div class="history-title">📊 数据看板</div>
+      <button class="header-btn" onclick="exportDashboardToNotion()" title="导出到 Notion">📤</button>
+    </div>
+
+    <!-- KPI strip -->
+    <div id="dashKpi" class="dash-kpi-strip"></div>
+
+    <!-- Filters -->
+    <div class="dash-filter-bar">
+      <select id="dashFilterSwipe" class="dash-filter-select" onchange="renderDashboard()">
+        <option value="">全部</option>
+        <option value="right">已通过</option>
+        <option value="left">已拒绝</option>
+        <option value="none">未划过</option>
+      </select>
+      <select id="dashFilterScore" class="dash-filter-select" onchange="renderDashboard()">
+        <option value="">不限评分</option>
+        <option value="scored">已评分</option>
+        <option value="unscored">未评分</option>
+      </select>
+      <input id="dashFilterText" class="dash-filter-text" placeholder="搜索项目名/账号/类型…"
+             oninput="renderDashboard()" />
+    </div>
+
+    <!-- Card list -->
+    <div id="dashList" class="dash-list">
+      <div class="dash-empty">点击右上角 🔄 加载</div>
+    </div>
+    <button id="dashReload" class="admin-import-btn" onclick="loadDashboard()" style="margin:12px;width:calc(100% - 24px)">
+      🔄 加载数据
+    </button>
+  </div>
+
+  <!-- Dashboard detail drawer -->
+  <div id="dashDrawer" class="dash-drawer" style="display:none">
+    <div class="dash-drawer-backdrop" onclick="closeDashDrawer()"></div>
+    <div class="dash-drawer-panel">
+      <div class="dash-drawer-header">
+        <button class="back-btn" onclick="closeDashDrawer()">← 关闭</button>
+        <div class="dash-drawer-title" id="dashDrawerTitle">详情</div>
+      </div>
+      <div id="dashDrawerBody" class="dash-drawer-body"></div>
     </div>
   </div>
 
@@ -2500,6 +2758,7 @@ let swipeCountLike = 0;
 let swipeCountPass = 0;
 let pendingSwipe = null;
 let currentDmText = '';
+let originalDmTextForSwipe = '';  // LLM-generated baseline (frozen, never edited)
 let currentXhsUrl = '';
 let cardShownAt = null; // ISO timestamp when current card was shown
 let userScoreDims = ['创意', '管线', '引力']; // updated from user's rubric scoring category_names
@@ -3636,6 +3895,7 @@ async function showDmModal(companyId, company) {
     const res = await authFetch(`/api/dm/${companyId}`);
     const data = await res.json();
     currentDmText = data.dm_text;
+    originalDmTextForSwipe = data.dm_text;  // freeze LLM original for diff later
     currentXhsUrl = data.xhs_url || currentXhsUrl;
     document.getElementById('dmTextarea').value = currentDmText;
   } catch (e) {
@@ -3760,6 +4020,7 @@ async function postSwipe(companyId, direction, note, dmText) {
       method: 'POST',
       body: JSON.stringify({
         company_id: companyId, direction, note, dm_text: dmText,
+        dm_original: originalDmTextForSwipe || null,
         shown_at: cardShownAt, decided_at: decidedAt,
       }),
     });
@@ -4386,6 +4647,405 @@ function escHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+/* ════════════════════════════════════════════════════════════
+   DASHBOARD
+════════════════════════════════════════════════════════════ */
+let _dashData = null;  // {kpi, companies}
+
+function showDashboard() {
+  showScreen('screen-dashboard');
+  if (!_dashData) loadDashboard();
+}
+
+async function loadDashboard() {
+  const btn = document.getElementById('dashReload');
+  btn.disabled = true; btn.textContent = '⏳ 加载中…';
+  try {
+    const res = await authFetch('/api/admin/dashboard/companies');
+    const data = await res.json();
+    _dashData = data;
+    renderDashboard();
+  } catch (e) {
+    showToast('❌ 加载失败：' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔄 重新加载';
+  }
+}
+
+function renderDashboard() {
+  if (!_dashData) return;
+  const { kpi, companies } = _dashData;
+
+  // KPI strip
+  const kpiHtml = `
+    <div class="dash-kpi"><div class="dash-kpi-num">${kpi.total}</div><div class="dash-kpi-label">总抓取</div></div>
+    <div class="dash-kpi"><div class="dash-kpi-num">${kpi.scored}</div><div class="dash-kpi-label">已评分</div></div>
+    <div class="dash-kpi"><div class="dash-kpi-num">${kpi.swiped}</div><div class="dash-kpi-label">已划过</div></div>
+    <div class="dash-kpi"><div class="dash-kpi-num" style="color:#2a7a2a">${kpi.right}</div><div class="dash-kpi-label">通过</div></div>
+    <div class="dash-kpi"><div class="dash-kpi-num" style="color:#b5564a">${kpi.left}</div><div class="dash-kpi-label">拒绝</div></div>
+    <div class="dash-kpi"><div class="dash-kpi-num" style="color:#5b3b9a">${kpi.feedback_count}</div><div class="dash-kpi-label">反馈条数</div></div>
+    <div class="dash-kpi-progress">
+      <div class="dash-kpi-progress-label">距实验门槛（${kpi.target_swipes} 划 + ${kpi.target_left_with_note} 带备注左滑）：${kpi.swiped}/${kpi.target_swipes} · ${kpi.left_with_note}/${kpi.target_left_with_note}</div>
+      <div class="dash-kpi-progress-bar"><div class="dash-kpi-progress-fill" style="width:${Math.min(100, Math.round(kpi.swiped/kpi.target_swipes*100))}%"></div></div>
+    </div>
+  `;
+  document.getElementById('dashKpi').innerHTML = kpiHtml;
+
+  // Filters
+  const fSwipe = document.getElementById('dashFilterSwipe').value;
+  const fScore = document.getElementById('dashFilterScore').value;
+  const fText = (document.getElementById('dashFilterText').value || '').toLowerCase();
+
+  const filtered = companies.filter(c => {
+    if (fSwipe === 'right' && c.swipe?.direction !== 'right') return false;
+    if (fSwipe === 'left'  && c.swipe?.direction !== 'left')  return false;
+    if (fSwipe === 'none'  && c.swipe) return false;
+    if (fScore === 'scored'   && c.score_origin == null) return false;
+    if (fScore === 'unscored' && c.score_origin != null) return false;
+    if (fText) {
+      const hay = `${c.name||''} ${c.account||''} ${c.type||''}`.toLowerCase();
+      if (!hay.includes(fText)) return false;
+    }
+    return true;
+  });
+
+  const list = document.getElementById('dashList');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="dash-empty">没有符合条件的数据</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(c => _dashCardHtml(c)).join('');
+}
+
+function _dashCardHtml(c) {
+  const score = (c.score_origin != null)
+    ? `${c.score_origin}·${c.score_amplification ?? '?'}·${c.score_gravity ?? '?'}`
+    : '—';
+  const sw = c.swipe;
+  const swipePill = sw ? `<span class="dash-pill ${sw.direction}">${sw.direction === 'right' ? '👉 通过' : '👈 拒绝'}</span>` : '';
+  const dwellPill = c.dwell_seconds != null ? `<span class="dash-pill">⏱ ${c.dwell_seconds}s</span>` : '';
+  const dmPill = c.dm_status ? `<span class="dash-pill dm">✉️ ${c.dm_status}</span>` : '';
+  const rclassPill = c.rejection_class_label ? `<span class="dash-pill left">${c.rejection_class_label}</span>` : '';
+  const fbPill = c.feedback?.length ? `<span class="dash-pill fb">📝 ${c.feedback.length}</span>` : '';
+  const note = (sw?.note || '').slice(0, 40);
+  return `
+    <div class="dash-card" onclick="openDashDrawer(${c.id})">
+      <div class="dash-card-row1">
+        <div class="dash-card-name">${_esc(c.name || '(无名)')}</div>
+        <div class="dash-card-id">#${c.id}</div>
+      </div>
+      <div class="dash-card-meta">
+        <span>@${_esc(c.account || '?')}</span>
+        <span>${_esc(c.type || '?')}</span>
+        <span>评分 ${score}</span>
+      </div>
+      <div class="dash-card-pills">
+        ${swipePill}${dwellPill}${rclassPill}${dmPill}${fbPill}
+      </div>
+      ${note ? `<div class="dash-card-note">📝 ${_esc(note)}</div>` : ''}
+    </div>
+  `;
+}
+
+function _esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ── Detail drawer + 5 feedback slots ── */
+let _dashCurrentCompany = null;
+let _dashFbDirty = {};  // stage -> dirty flag
+
+function openDashDrawer(companyId) {
+  const c = _dashData.companies.find(x => x.id === companyId);
+  if (!c) return;
+  _dashCurrentCompany = c;
+  _dashFbDirty = {};
+  document.getElementById('dashDrawerTitle').textContent = c.name || '(无名)';
+  document.getElementById('dashDrawerBody').innerHTML = _dashDrawerHtml(c);
+  document.getElementById('dashDrawer').style.display = 'block';
+}
+
+function closeDashDrawer() {
+  document.getElementById('dashDrawer').style.display = 'none';
+  _dashCurrentCompany = null;
+}
+
+function _existingFb(c, stage) {
+  return (c.feedback || []).find(f => f.stage === stage);
+}
+
+function _dashDrawerHtml(c) {
+  const sw = c.swipe;
+  const interact = c.interact;
+  const interactStr = interact
+    ? `❤️ ${interact.likedCount ?? interact.liked_count ?? '?'} · 💬 ${interact.commentCount ?? interact.comment_count ?? '?'} · ⭐ ${interact.collectedCount ?? interact.collected_count ?? '?'}`
+    : '（未存）';
+
+  // ── Stage 1: 抓取 ──
+  const fb1 = _existingFb(c, 'ingest');
+  const stage1 = `
+    <div class="dash-stage">
+      <div class="dash-stage-title">🔍 抓取阶段</div>
+      <div class="dash-stage-body">
+        <div class="field"><span class="label">来自关键词：</span><span class="value">${_esc(c.search_keyword || '（未知，老数据）')}</span></div>
+        <div class="field"><span class="label">发布日期：</span><span class="value">${_esc(c.publish_date || '?')}</span></div>
+        <div class="field"><span class="label">XHS 互动：</span><span class="value">${interactStr}</span></div>
+        <div class="field"><span class="label">URL：</span><a href="${_esc(c.xhs_url||'#')}" target="_blank" style="color:#5b3b9a">打开原帖 ↗</a></div>
+      </div>
+      ${_fbZone('ingest', '该不该抓回来？', fb1, [
+        {key:'good', label:'✓ 该抓', cls:'good'},
+        {key:'bad',  label:'✗ 不该抓', cls:'bad'},
+      ])}
+    </div>
+  `;
+
+  // ── Stage 2: 抽取 ──
+  const fb2 = _existingFb(c, 'extract');
+  const stage2 = `
+    <div class="dash-stage">
+      <div class="dash-stage-title">🤖 LLM 抽取</div>
+      <div class="dash-stage-body">
+        <div class="field"><span class="label">类型：</span><span class="value">${_esc(c.type || '?')}</span></div>
+        <div class="field"><span class="label">一句话：</span><span class="value">${_esc(c.one_liner || '?')}</span></div>
+        <div class="field"><span class="label">摘要：</span><span class="value">${_esc(c.summary || '?')}</span></div>
+        <div class="field"><span class="label">MFV 关键词：</span><span class="value">${_esc(c.mfv_keywords || '?')}</span></div>
+        <div class="field"><span class="label">MFV 角度：</span><span class="value">${_esc(c.mfv_note || '?')}</span></div>
+      </div>
+      ${_fbZone('extract', '抽取得准吗？', fb2, [
+        {key:'good', label:'✓ 准确', cls:'good'},
+        {key:'bad',  label:'✗ 错漏', cls:'bad'},
+      ], '错在哪里…')}
+    </div>
+  `;
+
+  // ── Stage 3: 评分 ──
+  const fb3 = _existingFb(c, 'score');
+  const fb3gt = fb3 ? (() => { try { return JSON.parse(fb3.ground_truth || '{}'); } catch (e) { return {}; } })() : {};
+  const scoreBlock = (c.score_origin != null) ? `
+    <div class="field"><span class="label">原创：</span><span class="value">${c.score_origin}/5</span></div>
+    <div class="field"><span class="label">放大：</span><span class="value">${c.score_amplification ?? '?'}/5</span></div>
+    <div class="field"><span class="label">引力：</span><span class="value">${c.score_gravity ?? '?'}/5</span></div>
+    <div class="field"><span class="label">现实性：</span><span class="value">${_esc(c.viability_summary || '—')}</span></div>
+  ` : '<div class="field" style="color:#999">未评分</div>';
+  const stage3 = `
+    <div class="dash-stage">
+      <div class="dash-stage-title">📊 LLM 评分</div>
+      <div class="dash-stage-body">${scoreBlock}</div>
+      <div class="dash-feedback-zone">
+        <div class="dash-fb-label">📝 你认为正确的评分（训练 ground truth）</div>
+        ${fb3 ? `<div class="dash-fb-existing">已记录：${_esc(fb3.ground_truth || '')}</div>` : ''}
+        <div class="dash-score-grid">
+          <div class="dash-score-cell">
+            <div class="label">原创</div>
+            ${_scoreSelect('score_gt_origin', fb3gt.origin)}
+          </div>
+          <div class="dash-score-cell">
+            <div class="label">放大</div>
+            ${_scoreSelect('score_gt_amp', fb3gt.amp)}
+          </div>
+          <div class="dash-score-cell">
+            <div class="label">引力</div>
+            ${_scoreSelect('score_gt_grav', fb3gt.grav)}
+          </div>
+        </div>
+        <button class="dash-fb-btn good" style="margin-top:8px;width:100%" onclick="saveScoreFeedback(${c.id})">保存评分反馈</button>
+      </div>
+    </div>
+  `;
+
+  // ── Stage 4: 推送 ──
+  const fb4 = _existingFb(c, 'rank');
+  const stage4 = `
+    <div class="dash-stage">
+      <div class="dash-stage-title">📤 推送（赛道命中 / 历史拒绝过滤）</div>
+      <div class="dash-stage-body">
+        <div class="field" style="color:#666">这一段实时由用户的赛道关键词和历史拒绝词决定，无法存档。</div>
+      </div>
+      ${_fbZone('rank', '当时该不该推给我？', fb4, [
+        {key:'good', label:'✓ 推送对', cls:'good'},
+        {key:'bad',  label:'✗ 不该过滤', cls:'bad'},
+      ], '为什么…')}
+    </div>
+  `;
+
+  // ── Stage 5: Swipe + 拒绝分类 ──
+  let stage5 = '';
+  if (sw) {
+    const fb5 = _existingFb(c, 'classify');
+    let fb5gt = {};
+    try { fb5gt = JSON.parse(fb5?.ground_truth || '{}'); } catch (e) {}
+    const swipeInfo = `
+      <div class="field"><span class="label">方向：</span><span class="value">${sw.direction === 'right' ? '👉 通过' : '👈 拒绝'}</span></div>
+      <div class="field"><span class="label">时间：</span><span class="value">${_esc(sw.swiped_at || '?')}</span></div>
+      ${c.dwell_seconds != null ? `<div class="field"><span class="label">停留：</span><span class="value">${c.dwell_seconds} 秒</span></div>` : ''}
+      ${sw.note ? `<div class="field"><span class="label">你的备注：</span><div class="value" style="margin-top:4px;padding:8px;background:#f8f8f8;border-radius:6px">${_esc(sw.note)}</div></div>` : ''}
+    `;
+    let classifyBlock = '';
+    if (sw.direction === 'left') {
+      classifyBlock = `
+        <div class="field"><span class="label">LLM 分类：</span><span class="value">${_esc(c.rejection_class_label || '处理中…')}</span></div>
+        <div class="field"><span class="label">提取关键词：</span><span class="value">${_esc(sw.extracted_keyword || '—')}</span></div>
+        <div class="dash-feedback-zone">
+          <div class="dash-fb-label">📝 LLM 理解你了吗？</div>
+          ${fb5 ? `<div class="dash-fb-existing">已记录：${_esc(fb5.ground_truth || fb5.verdict || '')}</div>` : ''}
+          <div class="dash-fb-btns">
+            <button class="dash-fb-btn good ${fb5?.verdict==='good'?'active':''}" onclick="saveClassifyFeedback(${c.id}, 'good', null)">✓ 准确</button>
+            <button class="dash-fb-btn ${fb5gt.correct_class==='A'?'active':''}" onclick="saveClassifyFeedback(${c.id}, 'fixed', 'A')">→ 类型不感兴趣</button>
+            <button class="dash-fb-btn ${fb5gt.correct_class==='B1'?'active':''}" onclick="saveClassifyFeedback(${c.id}, 'fixed', 'B1')">→ 评分不达标</button>
+            <button class="dash-fb-btn ${fb5gt.correct_class==='B2'?'active':''}" onclick="saveClassifyFeedback(${c.id}, 'fixed', 'B2')">→ 其他偏好</button>
+          </div>
+          <input id="dash_classify_kw" class="dash-fb-input" placeholder="正确的关键词（可选）" value="${_esc(fb5gt.correct_keyword || '')}" />
+        </div>
+      `;
+    } else {
+      // right swipe → DM diff
+      const orig = sw.dm_original || '';
+      const sent = sw.dm_text || '';
+      const diff = (orig && sent && orig !== sent)
+        ? `<div class="dash-stage-body" style="margin-top:6px"><div class="label">话术修改 diff：</div><div class="dash-diff-block">${_simpleDiff(orig, sent)}</div></div>`
+        : (sent ? `<div class="dash-stage-body" style="margin-top:6px"><div class="label">最终发送：</div><div class="value">${_esc(sent)}</div></div>` : '');
+      classifyBlock = diff || '<div class="field" style="color:#999">无 DM 信息</div>';
+    }
+    stage5 = `
+      <div class="dash-stage">
+        <div class="dash-stage-title">${sw.direction === 'right' ? '👉 通过 + 联系话术' : '👈 拒绝 + 分类'}</div>
+        <div class="dash-stage-body">${swipeInfo}</div>
+        ${classifyBlock}
+      </div>
+    `;
+  } else {
+    stage5 = `<div class="dash-stage"><div class="dash-stage-title">⌛ 还未划过这张卡</div></div>`;
+  }
+
+  return stage1 + stage2 + stage3 + stage4 + stage5;
+}
+
+function _fbZone(stage, prompt, existing, options, placeholder) {
+  const inputId = `dash_fb_note_${stage}`;
+  const buttons = options.map(o => `
+    <button class="dash-fb-btn ${o.cls||''} ${existing?.verdict===o.key?'active':''}"
+            onclick="saveSimpleFeedback('${stage}', '${o.key}')">${o.label}</button>
+  `).join('');
+  const note = placeholder ? `<input id="${inputId}" class="dash-fb-input" placeholder="${placeholder}" value="${_esc(existing?.note || '')}" onblur="saveSimpleFeedback('${stage}', null, this.value)" />` : '';
+  return `
+    <div class="dash-feedback-zone">
+      <div class="dash-fb-label">📝 ${prompt}</div>
+      ${existing ? `<div class="dash-fb-existing">已记录：${existing.verdict || ''} ${_esc(existing.note || '')}</div>` : ''}
+      <div class="dash-fb-btns">${buttons}</div>
+      ${note}
+    </div>
+  `;
+}
+
+function _scoreSelect(id, val) {
+  const opts = [1,2,3,4,5].map(n =>
+    `<option value="${n}" ${val===n?'selected':''}>${n}</option>`
+  ).join('');
+  return `<select id="${id}"><option value="">—</option>${opts}</select>`;
+}
+
+async function _postFeedback(payload) {
+  const res = await authFetch('/api/admin/dashboard/feedback', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+  });
+  if (!res?.ok) { showToast('❌ 反馈保存失败'); return false; }
+  return true;
+}
+
+async function saveSimpleFeedback(stage, verdict, note) {
+  if (!_dashCurrentCompany) return;
+  const cid = _dashCurrentCompany.id;
+  const existing = _existingFb(_dashCurrentCompany, stage);
+  const payload = {
+    company_id: cid, stage,
+    verdict: verdict !== null ? verdict : (existing?.verdict || null),
+    note: note != null ? note : (existing?.note || null),
+  };
+  const ok = await _postFeedback(payload);
+  if (ok) { showToast('✓ 已保存'); await _refreshAfterFb(cid); }
+}
+
+async function saveScoreFeedback(cid) {
+  const o = parseInt(document.getElementById('score_gt_origin').value) || null;
+  const a = parseInt(document.getElementById('score_gt_amp').value) || null;
+  const g = parseInt(document.getElementById('score_gt_grav').value) || null;
+  if (!o && !a && !g) { showToast('请至少填一项'); return; }
+  const ok = await _postFeedback({
+    company_id: cid, stage: 'score', verdict: 'fixed',
+    ground_truth: { origin: o, amp: a, grav: g },
+  });
+  if (ok) { showToast('✓ 已保存'); await _refreshAfterFb(cid); }
+}
+
+async function saveClassifyFeedback(cid, verdict, correctClass) {
+  const kwInput = document.getElementById('dash_classify_kw');
+  const kw = kwInput ? kwInput.value.trim() : '';
+  const ok = await _postFeedback({
+    company_id: cid, stage: 'classify', verdict,
+    ground_truth: correctClass ? { correct_class: correctClass, correct_keyword: kw || null } : null,
+  });
+  if (ok) { showToast('✓ 已保存'); await _refreshAfterFb(cid); }
+}
+
+async function _refreshAfterFb(cid) {
+  // Reload feedback for this company only
+  try {
+    const res = await authFetch(`/api/admin/dashboard/feedback/${cid}`);
+    const fbs = await res.json();
+    const c = _dashData.companies.find(x => x.id === cid);
+    if (c) c.feedback = fbs;
+    document.getElementById('dashDrawerBody').innerHTML = _dashDrawerHtml(c);
+    renderDashboard();  // refresh KPI count
+  } catch (e) {}
+}
+
+/* ── Simple word-level diff for DM modification ── */
+function _simpleDiff(a, b) {
+  // char-level LCS-based diff (small input, no perf concern)
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, () => Array(n+1).fill(0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j], dp[i][j-1]);
+  let i = m, j = n; const out = [];
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && a[i-1] === b[j-1]) { out.unshift(_esc(a[i-1])); i--; j--; }
+    else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) { out.unshift(`<ins>${_esc(b[j-1])}</ins>`); j--; }
+    else { out.unshift(`<del>${_esc(a[i-1])}</del>`); i--; }
+  }
+  // Collapse adjacent del/ins tags
+  return out.join('').replace(/(<\/del>)(<del>)/g, '').replace(/(<\/ins>)(<ins>)/g, '');
+}
+
+/* ── Notion sync (auto-write to configured page) ── */
+async function exportDashboardToNotion() {
+  if (!_dashData) { showToast('请先加载数据'); return; }
+  showToast('⏳ 正在同步到 Notion…');
+  try {
+    const res = await authFetch('/api/admin/dashboard/export-notion', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`✅ 已同步 ${data.rows_synced} 条到 Notion`);
+      if (data.url) setTimeout(() => window.open(data.url, '_blank'), 800);
+    } else {
+      showToast('❌ 同步失败：' + (data.error || ''));
+      // fallback: 复制 markdown
+      try {
+        const r = await authFetch('/api/admin/dashboard/export-markdown');
+        const md = (await r.json()).markdown;
+        if (md) {
+          await navigator.clipboard.writeText(md);
+          showToast('已复制 markdown 备份，可手动粘贴');
+        }
+      } catch (e) {}
+    }
+  } catch (e) {
+    showToast('❌ 同步失败：' + e.message);
+  }
+}
+
 
 /* ════════════════════════════════════════════════════════════
    BOOT

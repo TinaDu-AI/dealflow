@@ -1,0 +1,7 @@
+# 实验产物：results.json / report.html 是会变大的中间产物
+# 默认不入库，只在需要存档某次实验结论时再 git add -f
+*/results.json
+*/report.html
+_shared/corpus/*.jsonl
+_shared/samples/*.jsonl
+!.gitkeep

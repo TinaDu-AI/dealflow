@@ -482,6 +482,11 @@ def _run_job(job_id: str, keywords: list[str], max_per_keyword: int, institution
                         "is_revival": 0,
                         "previous_rejection": None,
                         "id": None,  # let DB auto-assign
+                        # Dashboard fields (2026-05-07)
+                        "search_keyword": keyword,
+                        "interact_data": json.dumps(
+                            raw.get("interact", {}), ensure_ascii=False
+                        ),
                         # Scoring fields — filled below
                         "score_origin": None,
                         "score_amplification": None,
