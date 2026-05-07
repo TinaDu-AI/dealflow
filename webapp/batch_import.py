@@ -314,7 +314,7 @@ def _preflight_check(job_id: str) -> bool:
     Two-step preflight:
     1. Fast WebSocket ping (< 5s) to verify bridge + extension are alive.
        Fail immediately if not — no point waiting 5 minutes for a hanging CLI.
-    2. Run check-login (45s timeout) to verify XHS login status.
+    2. Run check-login (90s timeout) to verify XHS login status.
     """
     # ── Step 1: Quick bridge ping ──────────────────────────────────────────────
     _log(job_id, "🔌 检查浏览器扩展连接…")
@@ -335,10 +335,10 @@ def _preflight_check(job_id: str) -> bool:
     _log(job_id, "✅ Bridge 已连接，检查登录状态…")
 
     # ── Step 2: check-login (extension is alive, so this should be fast) ──────
-    data = _run_cli("check-login", timeout=45)
+    data = _run_cli("check-login", timeout=90)
 
     if data is None:
-        _log(job_id, "❌ check-login 超时（45s），请检查 Chrome 是否响应正常后重试")
+        _log(job_id, "❌ check-login 超时（90s），请检查 Chrome 是否响应正常后重试")
         return False
 
     # Error response from CLI (bridge/connection failure)

@@ -718,14 +718,31 @@ def _warmup_cli_pyc() -> None:
     env["NO_PROXY"] = "localhost,127.0.0.1"
 
     try:
+        # 1) Compile third-party site-packages
         subprocess.run(
             [str(venv_python), "-m", "compileall", str(venv_site), "-q"],
-            env=env,
-            cwd=str(project_root),
-            timeout=300,
-            capture_output=True,
+            env=env, cwd=str(project_root), timeout=300, capture_output=True,
         )
-        print("[warmup] venv pyc compilation complete")
+        # 2) Compile project's own scripts/ (the CLI + xhs lib that runs every check-login)
+        scripts_dir = project_root / "scripts"
+        if scripts_dir.exists():
+            subprocess.run(
+                [str(venv_python), "-m", "compileall", str(scripts_dir), "-q"],
+                env=env, cwd=str(project_root), timeout=120, capture_output=True,
+            )
+        print("[warmup] pyc compilation complete (venv + scripts)")
+
+        # 3) Fire a single check-login through the full subprocess path so the
+        #    OS-level disk caches (.py files, dylibs) are hot. Result discarded.
+        try:
+            cli = project_root / "scripts" / "cli.py"
+            subprocess.run(
+                [str(venv_python), str(cli), "check-login"],
+                env=env, cwd=str(project_root), timeout=60, capture_output=True,
+            )
+            print("[warmup] check-login path warmed")
+        except Exception as _e:
+            print(f"[warmup] check-login warmup skipped: {_e}")
     except Exception as e:
         print(f"[warmup] pyc compilation error (non-fatal): {e}")
 
