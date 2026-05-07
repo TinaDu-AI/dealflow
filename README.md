@@ -1,4 +1,4 @@
-# MFV Deal Flow
+# Deal Flow
 
 小红书 AI 创业项目自动筛选工具。通过小红书搜索 AI 创业相关内容，结合 LLM 对项目进行 Rubric 评分，帮助投资人快速发现优质标的。
 
