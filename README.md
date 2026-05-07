@@ -4,10 +4,14 @@
 
 ## 功能
 
-- 🔍 **批量搜索** — 按关键词自动抓取小红书内容
+- 🔍 **批量搜索** — 按关键词自动抓取小红书内容，记录来源关键词与互动数据
 - 🤖 **AI 评分** — 基于自定义 Rubric 对项目进行多维度打分（创意 / 管线 / 引力）
 - 📋 **项目管理** — 滑动卡片筛选，右滑发送私信话术，左滑跳过
-- 📊 **历史记录** — 查看所有处理过的项目，支持详情查看和补充联系
+- 🧠 **拒绝/通过智能** — 左滑后 LLM 自动分类（类型不感兴趣 / 评分维度不达标 / 其他偏好）；右滑提取关键词回流偏好；同类项目 N 轮内不重复出现
+- ♻️ **起死回生** — 左滑后 3 轮冷却，符合条件的项目重新入队
+- 📊 **数据看板**（管理员）— 全 pipeline 视图（抓取 / 抽取 / 评分 / 推送 / Swipe），手机优先 UI，5 个阶段反馈槽；话术修改字符级 diff
+- 🔄 **Notion 自动同步** — 每天定时把数据看板同步到 Notion 页面，也支持手动触发
+- 📜 **历史记录** — 查看所有处理过的项目，支持详情查看和补充联系
 - 👤 **多用户** — 支持邀请注册，每人独立偏好设置
 
 ## 技术架构
@@ -51,6 +55,14 @@ ADMIN_PHONE=138xxxxxxxx
 SMTP_USER=your-account@163.com
 SMTP_PASS=your-163-auth-code
 DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+可选项（Notion 同步）：
+
+```
+NOTION_API_KEY=secret_xxx                 # Notion integration token
+NOTION_DASHBOARD_PAGE_ID=xxxxxxxx         # 接收同步的目标页面 ID
+CRON_SECRET=<random>                      # 定时同步用的 X-Cron-Secret 鉴权值
 ```
 
 ### 安装 Chrome 扩展
